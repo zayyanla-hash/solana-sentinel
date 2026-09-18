@@ -1,6 +1,6 @@
 # Wallet intelligence
 
-**Status:** IMPLEMENTED (DEMO fixtures + deterministic engine). Live chain history is PLANNED pending Helius wallet APIs.
+**Status:** IMPLEMENTED engine. DEMO fixtures when unkeyed. Helius enhanced-tx history adapter is IMPLEMENTED and fail-closed: unknown wallets never receive demo trades; token transfers are `TRANSFER_*`, not synthetic buys.
 
 ## What it computes
 

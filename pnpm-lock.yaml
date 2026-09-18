@@ -567,6 +567,9 @@ importers:
       '@sat/token-risk':
         specifier: workspace:*
         version: link:../token-risk
+      '@sat/wallet-intel':
+        specifier: workspace:*
+        version: link:../wallet-intel
       zod:
         specifier: ^3.24.2
         version: 3.25.76

@@ -21,6 +21,7 @@ import type { HistoricalBars } from "@sat/signals";
 import { DiscoveryService } from "@sat/discovery";
 import { computeAllSignals, scoreOpportunity } from "@sat/signals";
 import { assessTokenRisk } from "@sat/token-risk";
+import { fetchJupiterTokenIntel } from "@sat/solana";
 import { PolicyEngine } from "@sat/policy-engine";
 import { RiskEngine } from "@sat/risk-engine";
 import { proposeSizeUsd, markPositions } from "@sat/portfolio";
@@ -47,6 +48,9 @@ export {
   emitTestAlert,
   getAlertEngine,
   resetIntelligenceForTests,
+  addWatchlistItem,
+  removeWatchlistItem,
+  portfolioRiskSnapshot,
 } from "./intelligence";
 export {
   decideProposalStatus,
@@ -134,7 +138,12 @@ export async function evaluateMint(
   if (!asset) return null;
 
   const riskInputs = await onchain.getTokenRiskInputs(mint);
-  const tokenRisk = assessTokenRisk(asset, riskInputs);
+  const jup = await fetchJupiterTokenIntel(mint);
+  const tokenRisk = assessTokenRisk(asset, {
+    ...riskInputs,
+    jupiterVerified: jup.verified,
+    jupiterOrganicScore: jup.organicScore,
+  });
   await db.addTokenRisk(tokenRisk);
 
   const policyEngine = new PolicyEngine(DEFAULT_POLICY_CONFIG);
@@ -455,7 +464,7 @@ export async function runDemoExperiment(db: Database = getDatabase()) {
 
 export async function getSystemHealth(db: Database = getDatabase()) {
   const state = await db.getState();
-  const { market, onchain, execution, research } = getProviders();
+  const { market, onchain, execution, research, walletHistory } = getProviders();
   const demoMode = market.isDemo || onchain.isDemo || Boolean(state.candidates.find((c) => c.isDemo));
   const lastDiscovery = state.events.find((e) => e.type === "TOKEN_DISCOVERED")?.timestamp ?? null;
   const lastPaper = state.orders[0]?.createdAt ?? null;
@@ -524,6 +533,8 @@ export async function getSystemHealth(db: Database = getDatabase()) {
       research: process.env.OPENAI_API_KEY ? "openai-compatible" : "mock",
       researchIsMock: !process.env.OPENAI_API_KEY,
       researchName: research.constructor?.name ?? "research",
+      walletHistory: walletHistory.name,
+      walletHistoryIsDemo: walletHistory.isDemo,
     },
     providerHealth: providerRows,
   };

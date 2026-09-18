@@ -6,6 +6,8 @@ import {
   listWalletIntelligence,
   runStrategyLab,
   evaluateMint,
+  portfolioRiskSnapshot,
+  addWatchlistItem,
 } from "@sat/pipeline";
 import { getDatabase } from "@sat/database";
 import { isLiveTradingAllowed } from "@sat/shared";
@@ -27,6 +29,7 @@ async function main(): Promise<void> {
         "sentinel explain-signal <id>",
         "sentinel backtest [mint]",
         "sentinel portfolio-risk",
+        "sentinel watchlist-add <mint|wallet>",
       ],
       liveTradingAllowed: isLiveTradingAllowed(),
       note: "JSON output. No secrets. PAPER only.",
@@ -56,16 +59,19 @@ async function main(): Promise<void> {
     case "backtest":
       json({ backtest: await runStrategyLab({ mint: arg, db, walkForward: true }) });
       return;
-    case "portfolio-risk": {
-      const s = await db.getState();
+    case "portfolio-risk":
+      json({ ...(await portfolioRiskSnapshot(db)), liveTradingAllowed: false });
+      return;
+    case "watchlist-add":
+      if (!arg) throw new Error("address required");
       json({
-        navUsd: s.portfolio.navUsd,
-        drawdownPct: s.portfolio.drawdownPct,
-        positions: s.positions.length,
-        liveTradingAllowed: false,
+        item: await addWatchlistItem({
+          kind: arg.length > 40 ? "MINT" : "WALLET",
+          address: arg,
+          db,
+        }),
       });
       return;
-    }
     default:
       throw new Error(`unknown command ${cmd}`);
   }

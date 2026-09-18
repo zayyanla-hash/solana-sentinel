@@ -11,13 +11,25 @@ import {
 import { buildWalletGraph } from "@sat/wallet-graph";
 import { runBacktest, randomEntryControl } from "@sat/backtest";
 import { AlertEngine, InternalAlertProvider } from "@sat/alerts";
-import { entitlementsFor, parseTier } from "@sat/entitlements";
+import {
+  entitlementsFor,
+  parseTier,
+  resolveApiPrincipal,
+  parseApiKeys,
+  consumeQuota,
+  resetQuotaForTests,
+} from "@sat/entitlements";
 import { x402Enabled, paymentRequired, verifyPaymentSignature } from "@sat/x402";
 import { JupiterSwapV2Provider, JupiterUltraLegacyProvider, createExecutionProvider } from "@sat/execution";
-import { buildSentinelSignals } from "@sat/signals";
+import { buildSentinelSignals, attachAnalogues } from "@sat/signals";
 import { getDemoCandidates, newId } from "@sat/shared";
 import { backoffMs, DemoStreamProvider } from "@sat/streaming";
 import { rateLimitAllow, resetObservabilityForTests } from "@sat/observability";
+import { InMemoryDatabase } from "@sat/database";
+import { addWatchlistItem, analyzeWallet } from "@sat/pipeline";
+import { DemoWalletHistoryProvider, EMPTY_JUPITER_INTEL } from "@sat/solana";
+import { assessPortfolioExposure } from "@sat/portfolio";
+import { DEFAULT_RISK_CONFIG } from "@sat/shared";
 import { assessTokenRisk } from "@sat/token-risk";
 import { buildDemoOhlcv } from "@sat/market-data";
 
@@ -289,6 +301,142 @@ describe("token-risk v2 unknowns stay null", () => {
     expect(a.details.jupiterOrganicScore).toBeNull();
     expect(a.details.jupiterVerified).toBeNull();
     expect(a.details.missingFields).toContain("jupiterOrganicScore");
+  });
+});
+
+describe("api keys and quota", () => {
+  it("resolves SAT_API_KEYS with timing-safe compare", () => {
+    const prev = process.env.SAT_API_KEYS;
+    process.env.SAT_API_KEYS = "unit_pro:PRO,unit_free:FREE";
+    try {
+      expect(parseApiKeys()[0]?.tier).toBe("PRO");
+      expect(resolveApiPrincipal("Bearer unit_pro")?.tier).toBe("PRO");
+      expect(resolveApiPrincipal("Bearer nope")).toBeNull();
+    } finally {
+      if (prev === undefined) delete process.env.SAT_API_KEYS;
+      else process.env.SAT_API_KEYS = prev;
+    }
+  });
+
+  it("enforces daily quota", () => {
+    resetQuotaForTests();
+    expect(consumeQuota("k1", 2).ok).toBe(true);
+    expect(consumeQuota("k1", 2).ok).toBe(true);
+    expect(consumeQuota("k1", 2).ok).toBe(false);
+  });
+});
+
+describe("watchlist, analogues, wallet history, portfolio limits", () => {
+  it("caps watchlist by entitlement", async () => {
+    const db = new InMemoryDatabase();
+    const free = { ...entitlementsFor("FREE"), maxWatchlist: 1 };
+    await addWatchlistItem({
+      kind: "MINT",
+      address: getDemoCandidates()[0]!.mint,
+      entitlements: free,
+      db,
+    });
+    await expect(
+      addWatchlistItem({
+        kind: "MINT",
+        address: getDemoCandidates()[1]!.mint,
+        entitlements: free,
+        db,
+      }),
+    ).rejects.toThrow(/WATCHLIST_LIMIT/);
+  });
+
+  it("wallet history for unknown wallets is insufficient, not a fake winner", async () => {
+    const hist = await new DemoWalletHistoryProvider().getTrades(
+      "11111111111111111111111111111111",
+    );
+    expect(hist.trades).toEqual([]);
+    expect(hist.freshness).toBe("INSUFFICIENT");
+  });
+
+  it("analyzeWallet persists a score", async () => {
+    const db = new InMemoryDatabase();
+    const score = await analyzeWallet(DEMO_WALLETS.SMART_A, db);
+    expect(score.neverGuaranteed).toBe(true);
+    const state = await db.getState();
+    expect(state.walletScores[0]?.address).toBe(DEMO_WALLETS.SMART_A);
+  });
+
+  it("analogues stay INSUFFICIENT without paper fills", () => {
+    const wallets = listDemoWalletScores();
+    const asset = getDemoCandidates().find((c) => c.symbol === "JUP")!;
+    const built = buildSentinelSignals({
+      asset,
+      marketSignals: [
+        {
+          name: "momentum",
+          value: 4,
+          normalizedScore: 0.4,
+          confidence: 0.8,
+          source: "test",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          name: "volume",
+          value: 3,
+          normalizedScore: 0.3,
+          confidence: 0.7,
+          source: "test",
+          timestamp: new Date().toISOString(),
+        },
+        {
+          name: "liquidity",
+          value: 1,
+          normalizedScore: 0.2,
+          confidence: 0.7,
+          source: "test",
+          timestamp: new Date().toISOString(),
+        },
+      ],
+      wallets,
+      tokenRiskTier: "LOWER_RISK",
+      tokenRiskScore: 20,
+    });
+    const withA = attachAnalogues(built[0]!, built, []);
+    expect(Array.isArray(withA.analogues)).toBe(true);
+    expect(EMPTY_JUPITER_INTEL.verified).toBeNull();
+    expect(EMPTY_JUPITER_INTEL.organicScore).toBeNull();
+  });
+
+  it("portfolio exposure flags over-limit concentration", () => {
+    const exp = assessPortfolioExposure(
+      {
+        timestamp: new Date().toISOString(),
+        navUsd: 10_000,
+        cashUsd: 1_000,
+        positionsValueUsd: 9_000,
+        drawdownPct: 0.2,
+        peakNavUsd: 12_500,
+      },
+      [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          mint: getDemoCandidates()[0]!.mint,
+          symbol: "JUP",
+          qty: 1000,
+          avgEntryUsd: 1,
+          markUsd: 9,
+          unrealizedPnlUsd: 8000,
+          realizedPnlUsd: 0,
+          openedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      {
+        maxPositionUsd: DEFAULT_RISK_CONFIG.maxPositionUsd,
+        maxSimultaneousPositions: DEFAULT_RISK_CONFIG.maxSimultaneousPositions,
+        maxPortfolioExposurePct: 0.6,
+        maxDrawdownPct: 0.15,
+      },
+    );
+    expect(exp.withinExposureLimit).toBe(false);
+    expect(exp.withinDrawdownLimit).toBe(false);
+    expect(exp.warnings.length).toBeGreaterThan(0);
   });
 });
 

@@ -19,7 +19,17 @@ import {
 } from "@sat/pipeline";
 import { assessTokenRisk } from "@sat/token-risk";
 import { getProviders } from "@sat/pipeline";
-import { entitlementsFor, parseTier } from "@sat/entitlements";
+import {
+  entitlementsFor,
+  parseTier,
+  parseApiKeys,
+  resolveApiPrincipal,
+  consumeQuota,
+} from "@sat/entitlements";
+import {
+  addWatchlistItem,
+  portfolioRiskSnapshot,
+} from "@sat/pipeline";
 import { rateLimitAllow, requestId, getAnalytics, recordUsage } from "@sat/observability";
 import { DEMO_WALLETS } from "@sat/wallet-intel";
 import { mutatingRequestDenied } from "@/lib/request-guard";
@@ -48,8 +58,8 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
   getAnalytics().track("api_used", { path: path.join("/") });
 
   const db = getDatabase();
-  const tier = parseTier(req.headers.get("x-sentinel-tier"));
-  const entitlements = entitlementsFor(tier);
+  const keysConfigured = parseApiKeys().length > 0;
+  const principal = resolveApiPrincipal(req.headers.get("authorization"));
   const [a, b, c] = path;
 
   try {
@@ -66,8 +76,21 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
       );
     }
 
+    if (keysConfigured && !principal) {
+      return apiError("API key required", "API_KEY_REQUIRED", 401, rid);
+    }
+    const tier = principal?.tier ?? parseTier(req.headers.get("x-sentinel-tier"));
+    const entitlements = entitlementsFor(tier);
+    const quota = consumeQuota(principal?.keyId ?? `ip:${ip}`, entitlements.apiQuotaPerDay);
+    if (!quota.ok) {
+      return apiError("Daily API quota exceeded", "QUOTA_EXCEEDED", 429, rid);
+    }
+
     if (a === "entitlements" && !b) {
-      return apiOk({ entitlements, publicDemo: isPublicDemo() }, rid);
+      return apiOk(
+        { entitlements, publicDemo: isPublicDemo(), quota, principal: principal?.keyId ?? "anonymous" },
+        rid,
+      );
     }
 
     if (a === "market" && b === "regime") {
@@ -198,6 +221,22 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
       const rule = createAlertRule(parsed.data);
       getAnalytics().track("alert_created", { id: rule.id });
       return apiOk({ rule }, rid);
+    }
+
+    if (a === "watchlist" && req.method === "GET") {
+      const state = await db.getState();
+      return apiOk({ watchlist: state.watchlist, max: entitlements.maxWatchlist }, rid);
+    }
+    if (a === "watchlist" && req.method === "POST") {
+      const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+      const kind = body.kind === "WALLET" ? "WALLET" : "MINT";
+      const address = String(body.address ?? "");
+      getAnalytics().track("watchlist_add", { kind });
+      const item = await addWatchlistItem({ kind, address, entitlements, db });
+      return apiOk({ item }, rid);
+    }
+    if (a === "portfolio" && b === "risk") {
+      return apiOk({ risk: await portfolioRiskSnapshot(db), liveTradingAllowed: false }, rid);
     }
 
     if (a === "evaluate" && b) {

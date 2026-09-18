@@ -55,6 +55,12 @@ export const ActionSchema = z.discriminatedUnion("action", [
     threshold: z.number().nullable().optional(),
   }),
   z.object({ action: z.literal("wallet_analyze"), address: SolanaAddressSchema }),
+  z.object({
+    action: z.literal("watchlist_add"),
+    kind: z.enum(["MINT", "WALLET"]),
+    address: SolanaAddressSchema,
+  }),
+  z.object({ action: z.literal("watchlist_remove"), id: z.string().uuid() }),
 ]);
 
 export type ApiAction = z.infer<typeof ActionSchema>;

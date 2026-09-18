@@ -10,6 +10,11 @@ import {
   type OpportunityScore,
   type ResearchBrief,
   type SignalResult,
+  type WalletCredibilityScore,
+  type SentinelSignal,
+  type AlertRule,
+  type BacktestResult,
+  type WatchlistItem,
 } from "@sat/shared";
 import type { ExperimentResult } from "@sat/experiments";
 
@@ -51,6 +56,11 @@ export interface StoreSnapshot {
   signals: StoredSignal[];
   equityHistory: Array<{ t: string; nav: number }>;
   parseErrors: number;
+  watchlist: WatchlistItem[];
+  walletScores: WalletCredibilityScore[];
+  sentinelSignals: SentinelSignal[];
+  alertRules: AlertRule[];
+  backtests: BacktestResult[];
 }
 
 export interface Database {
@@ -71,4 +81,9 @@ export interface Database {
   pushEquity(nav: number): Promise<void>;
   consumeProposalAndRecordFill(work: FillUnitOfWork): Promise<void>;
   reset(startingCapital: number): Promise<void>;
+  setWatchlist(items: WatchlistItem[]): Promise<void>;
+  setWalletScores(scores: WalletCredibilityScore[]): Promise<void>;
+  setSentinelSignals(signals: SentinelSignal[]): Promise<void>;
+  addAlertRule(rule: AlertRule): Promise<void>;
+  addBacktest(result: BacktestResult): Promise<void>;
 }

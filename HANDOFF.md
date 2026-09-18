@@ -2,7 +2,7 @@
 
 ## STATUS
 
-**V3 PAPER/DEMO research + intelligence platform** — V1/V2 safety architecture preserved; live broadcast still hard-disabled. Wallet credibility, smart-money signals, walk-forward Strategy Lab, versioned API, entitlements, and a flag-off x402 PoC are implemented. Postgres persistence remains available when `DATABASE_URL` is set; default runtime without that URL is labeled in-memory.
+**V3 PAPER/DEMO research + intelligence platform** — live broadcast still hard-disabled. Wallet credibility, Helius/demo wallet history, Jupiter token intel (null if unkeyed), persisted watchlists/signals/backtests, API keys + quotas, smart-money analogues, walk-forward Strategy Lab, versioned API, entitlements, and a flag-off x402 PoC are implemented.
 
 ## WHAT WAS BUILT
 

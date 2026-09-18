@@ -344,3 +344,16 @@ export const KNOWN_PROGRAMS = {
   TOKEN: TOKEN_PROGRAM,
   TOKEN_2022: TOKEN_2022_PROGRAM,
 } as const;
+
+export {
+  DemoWalletHistoryProvider,
+  HeliusWalletHistoryProvider,
+  createWalletHistoryProvider,
+  type WalletHistoryProvider,
+  type WalletHistoryResult,
+} from "./wallet-history";
+export {
+  fetchJupiterTokenIntel,
+  EMPTY_JUPITER_INTEL,
+  type JupiterTokenIntel,
+} from "./jupiter-token";

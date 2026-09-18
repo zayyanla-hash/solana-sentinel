@@ -24,6 +24,15 @@ Versioned JSON under `/api/v1`. Every response includes `requestId`, `version: "
 
 Existing dashboard mutations remain `POST /api/state` (CSRF + PUBLIC_DEMO gates).
 
-Rate limit: in-memory token bucket per forwarded IP. Replace before multi-instance production.
+Rate limit: in-memory token bucket per forwarded IP. Daily quota by entitlement.
+
+When `SAT_API_KEYS` is set, `/api/v1` (except `/health`) requires `Authorization: Bearer <key>`. Tiers: FREE, PRO, ADVANCED, API.
+
+Additional:
+
+| Method | Path | Notes |
+|--------|------|--------|
+| GET/POST | `/api/v1/watchlist` | Entitlement-capped |
+| GET | `/api/v1/portfolio/risk` | Concentration / limit snapshot |
 
 CLI: `pnpm --filter @sat/cli start -- health`

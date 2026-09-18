@@ -163,8 +163,36 @@ export const SentinelSignalSchema = z.object({
   invalidationConditions: z.array(z.string()),
   provenance: z.array(z.string()),
   isDemo: z.boolean(),
+  analogues: z
+    .array(
+      z.object({
+        id: z.string(),
+        symbol: z.string(),
+        signalType: z.string(),
+        similarity: z.number().min(0).max(1),
+        paperOutcome: z.enum(["WIN", "LOSS", "FLAT", "UNKNOWN", "INSUFFICIENT"]),
+        note: z.string(),
+        isDemo: z.boolean(),
+      }),
+    )
+    .default([]),
 });
 export type SentinelSignal = z.infer<typeof SentinelSignalSchema>;
+
+export const WatchlistItemSchema = z.object({
+  id: z.string().uuid(),
+  kind: z.enum(["MINT", "WALLET"]),
+  address: SolanaAddressSchema,
+  label: z.string().max(64).optional(),
+  addedAt: z.string().datetime(),
+});
+export type WatchlistItem = z.infer<typeof WatchlistItemSchema>;
+
+export const ApiPrincipalSchema = z.object({
+  keyId: z.string(),
+  tier: z.enum(["FREE", "PRO", "ADVANCED", "API"]),
+});
+export type ApiPrincipal = z.infer<typeof ApiPrincipalSchema>;
 
 export const StrategyLabConfigSchema = z.object({
   version: z.string(),

@@ -123,7 +123,16 @@ type StatePayload = {
     invalidationConditions: string[];
     tokenRisk: string;
     isDemo: boolean;
+    analogues?: Array<{ symbol: string; paperOutcome: string; note: string; similarity: number }>;
   }>;
+  watchlist?: Array<{ id: string; kind: string; address: string; addedAt: string }>;
+  portfolioRisk?: {
+    largestPositionPct: number | null;
+    herfindahl: number | null;
+    openPositions: number;
+    warnings: string[];
+    withinDrawdownLimit: boolean;
+  };
 };
 
 async function fetchState(): Promise<StatePayload> {
@@ -205,6 +214,7 @@ export default function DashboardPage() {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [view, setView] = useState<"terminal" | "wallets" | "signals" | "lab" | "alerts">("terminal");
+  const [walletLookup, setWalletLookup] = useState("");
   const [labMint, setLabMint] = useState<string>("");
   const [backtest, setBacktest] = useState<{
     metrics: { totalReturnPct: number; maxDrawdownPct: number; tradeCount: number } | null;
@@ -425,6 +435,12 @@ export default function DashboardPage() {
                   <li>On-chain: {data.health.providers.onchain}</li>
                   <li>Execution: {data.health.providers.execution}</li>
                   <li>Research: {data.health.providers.research}</li>
+                  {data.portfolioRisk && (
+                    <li data-testid="portfolio-risk-line">
+                      Positions {data.portfolioRisk.openPositions}
+                      {data.portfolioRisk.warnings[0] ? ` · ${data.portfolioRisk.warnings[0]}` : " · within limits"}
+                    </li>
+                  )}
                 </ul>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {!data.health.publicDemo && (
@@ -769,10 +785,37 @@ export default function DashboardPage() {
           {view === "wallets" && (
             <section className="panel" data-testid="wallet-intel-panel">
               <div className="border-b border-[var(--line)] px-4 py-3">
-                <h2 className="text-sm font-semibold">Wallet credibility (DEMO fixtures)</h2>
+                <h2 className="text-sm font-semibold">Wallet credibility</h2>
                 <p className="text-xs text-[var(--muted)]">
-                  Not guaranteed profitable. Sample-size, moonshot, wash, and creator adjustments applied.
+                  Not guaranteed profitable. Transfers are not buys. Unkeyed history is DEMO fixtures.
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <input
+                    className="border border-[var(--line)] bg-[var(--bg-2)] px-2 py-1 text-xs mono w-72"
+                    placeholder="Wallet address"
+                    value={walletLookup}
+                    onChange={(e) => setWalletLookup(e.target.value)}
+                    data-testid="wallet-lookup-input"
+                  />
+                  <button
+                    className="border border-[var(--line)] px-2 py-1 text-xs"
+                    disabled={pending || walletLookup.length < 32}
+                    data-testid="btn-wallet-analyze"
+                    onClick={() => run("wallet_analyze", { address: walletLookup.trim() })}
+                  >
+                    Analyze
+                  </button>
+                  <button
+                    className="border border-[var(--line)] px-2 py-1 text-xs"
+                    disabled={pending || walletLookup.length < 32}
+                    data-testid="btn-watch-wallet"
+                    onClick={() =>
+                      run("watchlist_add", { kind: "WALLET", address: walletLookup.trim() })
+                    }
+                  >
+                    Watch
+                  </button>
+                </div>
               </div>
               <div className="divide-y divide-[var(--line)]">
                 {(data.wallets ?? []).map((w) => (
@@ -815,6 +858,11 @@ export default function DashboardPage() {
                   </div>
                   <p className="mt-1 text-xs text-[var(--muted)]">{s.explanation[0]}</p>
                   <p className="text-xs text-[var(--warn)]">Invalid if: {s.invalidationConditions[0]}</p>
+                  {s.analogues && s.analogues[0] && (
+                    <p className="text-xs text-[var(--muted)]">
+                      Analogue {s.analogues[0].symbol}: {s.analogues[0].paperOutcome} — {s.analogues[0].note}
+                    </p>
+                  )}
                 </div>
               ))}
             </section>
@@ -891,6 +939,16 @@ export default function DashboardPage() {
               >
                 Create score-cross alert
               </button>
+              {(data.watchlist ?? []).length > 0 && (
+                <div className="mt-4 text-xs" data-testid="watchlist-panel">
+                  <p className="uppercase text-[var(--muted)]">Watchlist</p>
+                  {data.watchlist?.map((w) => (
+                    <p key={w.id} className="mono mt-1">
+                      {w.kind} {w.address}
+                    </p>
+                  ))}
+                </div>
+              )}
             </section>
           )}
           </>

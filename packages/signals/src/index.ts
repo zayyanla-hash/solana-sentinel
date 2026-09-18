@@ -30,6 +30,7 @@ export {
   type HistoricalBars,
 } from "./historical";
 export { buildSentinelSignals } from "./sentinel";
+export { attachAnalogues, type SignalAnalogue } from "./analogues";
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));

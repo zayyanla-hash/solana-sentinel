@@ -11,6 +11,11 @@ import {
   type OpportunityScore,
   type ResearchBrief,
   type SignalResult,
+  type WalletCredibilityScore,
+  type SentinelSignal,
+  type AlertRule,
+  type BacktestResult,
+  type WatchlistItem,
   CandidateAssetSchema,
   PaperOrderSchema,
   PositionSchema,
@@ -133,6 +138,7 @@ export class PostgresDatabase implements Database {
       experiments,
       signals,
       equity,
+      intelRow,
     ] = await Promise.all([
       this.pool.query("select payload from sat_candidates"),
       this.pool.query("select payload from sat_proposals order by created_at desc"),
@@ -147,6 +153,7 @@ export class PostgresDatabase implements Database {
       this.pool.query("select payload from sat_experiments order by created_at desc"),
       this.pool.query("select mint, payload from sat_signals order by created_at desc limit 500"),
       this.pool.query("select t, nav from sat_equity order by id asc limit 500"),
+      this.pool.query("select payload from sat_meta where k = 'intel'"),
     ]);
 
     this.parseErrorCount = 0;
@@ -180,7 +187,52 @@ export class PostgresDatabase implements Database {
         nav: num(r.nav),
       })),
       parseErrors: this.parseErrorCount,
+      ...this.intelFromPayload(intelRow.rows[0]?.payload),
     };
+  }
+
+  private emptyIntel() {
+    return {
+      watchlist: [] as WatchlistItem[],
+      walletScores: [] as WalletCredibilityScore[],
+      sentinelSignals: [] as SentinelSignal[],
+      alertRules: [] as AlertRule[],
+      backtests: [] as BacktestResult[],
+    };
+  }
+
+  private intelFromPayload(payload: unknown) {
+    if (!payload || typeof payload !== "object") return this.emptyIntel();
+    const rec = payload as Record<string, unknown>;
+    return {
+      watchlist: Array.isArray(rec.watchlist) ? (rec.watchlist as WatchlistItem[]) : [],
+      walletScores: Array.isArray(rec.walletScores)
+        ? (rec.walletScores as WalletCredibilityScore[])
+        : [],
+      sentinelSignals: Array.isArray(rec.sentinelSignals)
+        ? (rec.sentinelSignals as SentinelSignal[])
+        : [],
+      alertRules: Array.isArray(rec.alertRules) ? (rec.alertRules as AlertRule[]) : [],
+      backtests: Array.isArray(rec.backtests) ? (rec.backtests as BacktestResult[]) : [],
+    };
+  }
+
+  private async readIntel(): Promise<ReturnType<PostgresDatabase["emptyIntel"]>> {
+    await this.ensure();
+    const row = await this.pool.query("select payload from sat_meta where k = 'intel'");
+    return this.intelFromPayload(row.rows[0]?.payload);
+  }
+
+  private async writeIntel(
+    patch: Partial<ReturnType<PostgresDatabase["emptyIntel"]>>,
+  ): Promise<void> {
+    const current = await this.readIntel();
+    const next = { ...current, ...patch };
+    await this.pool.query(
+      `insert into sat_meta (k, payload) values ('intel', $1::jsonb)
+       on conflict (k) do update set payload = excluded.payload`,
+      [next],
+    );
   }
 
   async setCandidates(c: CandidateAsset[]): Promise<void> {
@@ -429,6 +481,7 @@ export class PostgresDatabase implements Database {
           [p.id, p.mint, p, p.updatedAt],
         );
       }
+      await client.query("delete from sat_meta where k = 'intel'");
       await client.query("commit");
     } catch (err) {
       await client.query("rollback");
@@ -436,6 +489,26 @@ export class PostgresDatabase implements Database {
     } finally {
       client.release();
     }
+  }
+
+  async setWatchlist(items: WatchlistItem[]): Promise<void> {
+    await this.writeIntel({ watchlist: items });
+  }
+  async setWalletScores(scores: WalletCredibilityScore[]): Promise<void> {
+    await this.writeIntel({ walletScores: scores.slice(0, 200) });
+  }
+  async setSentinelSignals(signals: SentinelSignal[]): Promise<void> {
+    await this.writeIntel({ sentinelSignals: signals.slice(0, 200) });
+  }
+  async addAlertRule(rule: AlertRule): Promise<void> {
+    const intel = await this.readIntel();
+    await this.writeIntel({
+      alertRules: [rule, ...intel.alertRules.filter((r) => r.id !== rule.id)].slice(0, 100),
+    });
+  }
+  async addBacktest(result: BacktestResult): Promise<void> {
+    const intel = await this.readIntel();
+    await this.writeIntel({ backtests: [result, ...intel.backtests].slice(0, 50) });
   }
 
   async close(): Promise<void> {

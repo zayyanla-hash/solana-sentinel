@@ -14,6 +14,9 @@ import {
   analyzeWallet,
   generateSmartMoneySignals,
   listWalletIntelligence,
+  addWatchlistItem,
+  removeWatchlistItem,
+  portfolioRiskSnapshot,
 } from "@sat/pipeline";
 import { ActionSchema, mutatingRequestDenied } from "@/lib/request-guard";
 import { isPublicDemo } from "@sat/shared";
@@ -37,8 +40,9 @@ export async function GET() {
     ...state,
     health: await getSystemHealth(db),
     operatingMode: getOperatingMode(),
-    wallets: await listWalletIntelligence(),
+    wallets: await listWalletIntelligence(db),
     sentinelSignals: await generateSmartMoneySignals(db).catch(() => []),
+    portfolioRisk: await portfolioRiskSnapshot(db),
   });
 }
 
@@ -80,8 +84,9 @@ export async function POST(req: Request) {
           ...(await db.getState()),
           health: await getSystemHealth(db),
           operatingMode: getOperatingMode(),
-          wallets: await listWalletIntelligence(),
+          wallets: await listWalletIntelligence(db),
           sentinelSignals: await generateSmartMoneySignals(db).catch(() => []),
+          portfolioRisk: await portfolioRiskSnapshot(db),
         });
       }
       case "evaluate":
@@ -114,7 +119,18 @@ export async function POST(req: Request) {
           }),
         });
       case "wallet_analyze":
-        return NextResponse.json({ score: await analyzeWallet(body.address) });
+        return NextResponse.json({ score: await analyzeWallet(body.address, db) });
+      case "watchlist_add":
+        return NextResponse.json({
+          item: await addWatchlistItem({
+            kind: body.kind,
+            address: body.address,
+            db,
+          }),
+        });
+      case "watchlist_remove":
+        await removeWatchlistItem(body.id, db);
+        return NextResponse.json({ ok: true });
       case "reset":
         await db.reset(Number(process.env.PAPER_STARTING_CAPITAL_USD ?? 100_000));
         await runFullResearchPass(db);

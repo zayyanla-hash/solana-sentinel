@@ -10,6 +10,11 @@ import {
   type OpportunityScore,
   type ResearchBrief,
   type SignalResult,
+  type WalletCredibilityScore,
+  type SentinelSignal,
+  type AlertRule,
+  type BacktestResult,
+  type WatchlistItem,
 } from "@sat/shared";
 import type { ExperimentResult } from "@sat/experiments";
 import { createInitialPortfolio } from "@sat/portfolio";
@@ -115,6 +120,21 @@ export class InMemoryDatabase implements Database {
   async reset(startingCapital: number) {
     this.state = emptyState(startingCapital, "memory");
   }
+  async setWatchlist(items: WatchlistItem[]) {
+    this.state.watchlist = items;
+  }
+  async setWalletScores(scores: WalletCredibilityScore[]) {
+    this.state.walletScores = scores.slice(0, 200);
+  }
+  async setSentinelSignals(signals: SentinelSignal[]) {
+    this.state.sentinelSignals = signals.slice(0, 200);
+  }
+  async addAlertRule(rule: AlertRule) {
+    this.state.alertRules = [rule, ...this.state.alertRules.filter((r) => r.id !== rule.id)].slice(0, 100);
+  }
+  async addBacktest(result: BacktestResult) {
+    this.state.backtests = [result, ...this.state.backtests].slice(0, 50);
+  }
 }
 
 function emptyState(startingCapital: number, mode: StoreSnapshot["mode"]): StoreSnapshot {
@@ -135,6 +155,11 @@ function emptyState(startingCapital: number, mode: StoreSnapshot["mode"]): Store
     signals: [],
     equityHistory: [{ t: snapshot.timestamp, nav: snapshot.navUsd }],
     parseErrors: 0,
+    watchlist: [],
+    walletScores: [],
+    sentinelSignals: [],
+    alertRules: [],
+    backtests: [],
   };
 }
 

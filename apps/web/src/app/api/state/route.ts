@@ -41,7 +41,10 @@ export async function GET() {
     health: await getSystemHealth(db),
     operatingMode: getOperatingMode(),
     wallets: await listWalletIntelligence(db),
-    sentinelSignals: await generateSmartMoneySignals(db).catch(() => []),
+    sentinelSignals:
+      state.sentinelSignals.length > 0
+        ? state.sentinelSignals
+        : await generateSmartMoneySignals(db).catch(() => []),
     portfolioRisk: await portfolioRiskSnapshot(db),
   });
 }

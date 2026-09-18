@@ -357,3 +357,4 @@ export {
   EMPTY_JUPITER_INTEL,
   type JupiterTokenIntel,
 } from "./jupiter-token";
+export { parseHeliusEnhancedTx, isQuoteMint, USDT } from "./helius-swap";

@@ -1,10 +1,6 @@
-import {
-  type WalletTrade,
-  WalletTradeSchema,
-  SolanaAddressSchema,
-  nowIso,
-} from "@sat/shared";
+import { type WalletTrade, SolanaAddressSchema } from "@sat/shared";
 import { DEMO_WALLETS, getDemoWalletTrades } from "@sat/wallet-intel";
+import { parseHeliusEnhancedTx } from "./helius-swap";
 
 export interface WalletHistoryResult {
   address: string;
@@ -97,54 +93,21 @@ export class HeliusWalletHistoryProvider implements WalletHistoryProvider {
       const rows = Array.isArray(raw) ? raw : [];
       const trades: WalletTrade[] = [];
       for (const row of rows) {
-        if (!row || typeof row !== "object") continue;
-        const tx = row as {
-          signature?: string;
-          timestamp?: number;
-          type?: string;
-          tokenTransfers?: Array<{
-            mint?: string;
-            tokenAmount?: number;
-            fromUserAccount?: string;
-            toUserAccount?: string;
-          }>;
-        };
-        const ts =
-          typeof tx.timestamp === "number"
-            ? new Date(tx.timestamp * 1000).toISOString()
-            : nowIso();
-        const transfers = Array.isArray(tx.tokenTransfers) ? tx.tokenTransfers : [];
-        if (!transfers.length) continue;
-        for (const t of transfers) {
-          const mint = SolanaAddressSchema.safeParse(t.mint);
-          if (!mint.success) continue;
-          const inbound = t.toUserAccount === parsed.data;
-          const outbound = t.fromUserAccount === parsed.data;
-          const side = inbound ? "TRANSFER_IN" : outbound ? "TRANSFER_OUT" : "UNKNOWN";
-          const parsedTrade = WalletTradeSchema.safeParse({
-            signature: String(tx.signature ?? `${parsed.data}:${ts}`),
-            timestamp: ts,
-            mint: mint.data,
-            side,
-            usdNotional: 0,
-            qty: Number(t.tokenAmount ?? 0),
-            priceUsd: null,
-            tokenAgeHoursAtEntry: null,
-            liquidityUsdAtEntry: null,
-            slippageBps: null,
-            counterparty: inbound ? t.fromUserAccount : t.toUserAccount,
-            isDemo: false,
-          });
-          if (parsedTrade.success) trades.push(parsedTrade.data);
-        }
+        trades.push(...parseHeliusEnhancedTx(parsed.data, row));
       }
+      const swaps = trades.filter((t) => t.side === "BUY" || t.side === "SELL").length;
+      const transfers = trades.filter(
+        (t) => t.side === "TRANSFER_IN" || t.side === "TRANSFER_OUT",
+      ).length;
       return {
         address: parsed.data,
         trades,
         freshness: trades.length ? "FRESH" : "INSUFFICIENT",
         provenance: [
           "helius-enhanced-tx",
-          "tokenTransfers mapped as TRANSFER_* not BUY/SELL unless a DEX swap parser is added",
+          `swaps=${swaps}`,
+          `transfers=${transfers}`,
+          "BUY/SELL only from evidenced SWAP events; plain transfers remain TRANSFER_*",
         ],
         isDemo: false,
         provider: this.name,

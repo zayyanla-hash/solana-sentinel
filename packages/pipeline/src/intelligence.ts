@@ -87,6 +87,16 @@ export async function generateSmartMoneySignals(
   const { onchain } = getProviders();
   const state = await db.getState();
   const wallets = await listWalletIntelligence(db);
+  const tracked = state.watchlist.filter((w) => w.kind === "WALLET").slice(0, 8);
+  for (const w of tracked) {
+    if (!wallets.some((s) => s.address === w.address)) {
+      try {
+        wallets.push(await analyzeWallet(w.address, db));
+      } catch {
+        /* invalid or insufficient history stays omitted */
+      }
+    }
+  }
   const out: SentinelSignal[] = [];
   for (const asset of state.candidates.slice(0, 12)) {
     const on = await onchain.getTokenRiskInputs(asset.mint);

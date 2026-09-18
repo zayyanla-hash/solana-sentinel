@@ -1,6 +1,6 @@
 # Wallet intelligence
 
-**Status:** IMPLEMENTED engine. DEMO fixtures when unkeyed. Helius enhanced-tx history adapter is IMPLEMENTED and fail-closed: unknown wallets never receive demo trades; token transfers are `TRANSFER_*`, not synthetic buys.
+**Status:** IMPLEMENTED engine. DEMO fixtures when unkeyed. Helius enhanced-tx history adapter is IMPLEMENTED and fail-closed: unknown wallets never receive demo trades. `events.swap` / `type=SWAP` become BUY/SELL (quote vs base). Plain transfers stay `TRANSFER_*`. Unpriced swaps still close lots by quantity; P&L stays null until prices exist.
 
 ## What it computes
 

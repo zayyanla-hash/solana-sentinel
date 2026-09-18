@@ -24,6 +24,7 @@ export interface ClosedRoundTrip {
   entryNotional: number;
   tokenAgeHoursAtEntry: number | null;
   liquidityUsdAtEntry: number | null;
+  priced: boolean;
 }
 
 function median(xs: number[]): number | null {
@@ -58,19 +59,21 @@ export function closeRoundTrips(trades: WalletTrade[]): ClosedRoundTrip[] {
       continue;
     }
     const queue = lots.get(t.mint) ?? [];
+    const sizeOf = (x: WalletTrade) => (x.usdNotional > 0 ? x.usdNotional : x.qty);
     if (t.side === "BUY") {
-      queue.push({ t, remaining: t.usdNotional });
+      queue.push({ t, remaining: sizeOf(t) });
       lots.set(t.mint, queue);
       continue;
     }
-    let remaining = t.usdNotional;
-    while (remaining > 1e-6 && queue.length) {
+    let remaining = sizeOf(t);
+    while (remaining > 1e-9 && queue.length) {
       const buy = queue[0]!;
       const used = Math.min(buy.remaining, remaining);
       const entryPx = buy.t.priceUsd ?? 0;
       const exitPx = t.priceUsd ?? 0;
-      const ret = entryPx > 0 && exitPx > 0 ? (exitPx - entryPx) / entryPx : 0;
-      const pnl = entryPx > 0 && exitPx > 0 ? ret * used : 0;
+      const priced = entryPx > 0 && exitPx > 0;
+      const ret = priced ? (exitPx - entryPx) / entryPx : 0;
+      const pnl = priced ? ret * (buy.t.usdNotional > 0 ? used : used * entryPx) : 0;
       closed.push({
         mint: t.mint,
         pnlUsd: pnl,
@@ -79,10 +82,11 @@ export function closeRoundTrips(trades: WalletTrade[]): ClosedRoundTrip[] {
         entryNotional: used,
         tokenAgeHoursAtEntry: buy.t.tokenAgeHoursAtEntry ?? null,
         liquidityUsdAtEntry: buy.t.liquidityUsdAtEntry ?? null,
+        priced,
       });
       buy.remaining -= used;
       remaining -= used;
-      if (buy.remaining <= 1e-6) queue.shift();
+      if (buy.remaining <= 1e-9) queue.shift();
     }
     lots.set(t.mint, queue);
   }
@@ -91,10 +95,11 @@ export function closeRoundTrips(trades: WalletTrade[]): ClosedRoundTrip[] {
 
 export function computePerformance(trades: WalletTrade[]): WalletPerformance {
   const closed = closeRoundTrips(trades);
+  const priced = closed.filter((t) => t.priced);
   const sampleSize = closed.length;
-  if (sampleSize < 3) {
+  if (priced.length < 3) {
     return {
-      realizedPnlUsd: sampleSize ? closed.reduce((s, t) => s + t.pnlUsd, 0) : null,
+      realizedPnlUsd: priced.length ? priced.reduce((s, t) => s + t.pnlUsd, 0) : null,
       unrealizedPnlUsd: null,
       winRate: null,
       lossRate: null,
@@ -109,31 +114,31 @@ export function computePerformance(trades: WalletTrade[]): WalletPerformance {
       sampleSize,
     };
   }
-  const wins = closed.filter((t) => t.pnlUsd > 0);
-  const losses = closed.filter((t) => t.pnlUsd < 0);
+  const wins = priced.filter((t) => t.pnlUsd > 0);
+  const losses = priced.filter((t) => t.pnlUsd < 0);
   const grossWin = wins.reduce((s, t) => s + t.pnlUsd, 0);
   const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnlUsd, 0));
-  const realized = closed.reduce((s, t) => s + t.pnlUsd, 0);
+  const realized = priced.reduce((s, t) => s + t.pnlUsd, 0);
   let peak = 0;
   let equity = 0;
   let maxDd = 0;
-  for (const t of closed) {
+  for (const t of priced) {
     equity += t.pnlUsd;
     peak = Math.max(peak, equity);
     if (peak > 0) maxDd = Math.max(maxDd, (peak - equity) / Math.max(peak, 1));
   }
-  const rets = closed.map((t) => t.returnPct);
+  const rets = priced.map((t) => t.returnPct);
   const sd = stdev(rets);
   const m = mean(rets) ?? 0;
   const consistency = sd == null || sd === 0 ? 1 : clamp(1 - sd / (Math.abs(m) + sd), 0, 1);
   return {
     realizedPnlUsd: realized,
     unrealizedPnlUsd: null,
-    winRate: wins.length / sampleSize,
-    lossRate: losses.length / sampleSize,
+    winRate: wins.length / priced.length,
+    lossRate: losses.length / priced.length,
     averageWinnerUsd: wins.length ? grossWin / wins.length : null,
     averageLoserUsd: losses.length ? -(grossLoss / losses.length) : null,
-    expectancyUsd: realized / sampleSize,
+    expectancyUsd: realized / priced.length,
     profitFactor: grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? null : 0,
     medianReturnPct: median(rets),
     maxDrawdownPct: maxDd * 100,
@@ -146,7 +151,7 @@ export function computePerformance(trades: WalletTrade[]): WalletPerformance {
 export function computeBehavior(trades: WalletTrade[]): WalletBehavior {
   const closed = closeRoundTrips(trades);
   const buys = trades.filter((t) => t.side === "BUY");
-  const notionals = buys.map((t) => t.usdNotional);
+  const notionals = buys.map((t) => (t.usdNotional > 0 ? t.usdNotional : t.qty)).filter((n) => n > 0);
   const ages = buys.map((t) => t.timestamp);
   let tradesPerDay: number | null = null;
   if (ages.length >= 2) {

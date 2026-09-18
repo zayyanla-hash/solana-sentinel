@@ -2,7 +2,7 @@
 
 ## STATUS
 
-**V2 PAPER/DEMO research platform** — audited V1 architecture preserved; live broadcast still hard-disabled. Postgres persistence is implemented and verified against local PostgreSQL 16 when `DATABASE_URL` is set. Default runtime without that URL remains labeled in-memory.
+**V3 PAPER/DEMO research + intelligence platform** — V1/V2 safety architecture preserved; live broadcast still hard-disabled. Wallet credibility, smart-money signals, walk-forward Strategy Lab, versioned API, entitlements, and a flag-off x402 PoC are implemented. Postgres persistence remains available when `DATABASE_URL` is set; default runtime without that URL is labeled in-memory.
 
 ## WHAT WAS BUILT
 
@@ -10,7 +10,7 @@
 - Discovery → historical/snapshot signals → token-risk v1.5 → policy → scoring → research → portfolio risk → Jupiter quote/plan → paper fill → experiments
 - Next.js research terminal (DEMO/PAPER banner, `canBroadcast=false` in UI, NAV, feed, provenance, ledger)
 - `PostgresDatabase` when `DATABASE_URL` is set; `InMemoryDatabase` fallback
-- Vitest **66** tests + Playwright critical flow; GitHub Actions (lint, typecheck, vitest, web build, gitleaks, Playwright)
+- Vitest **106** tests + Playwright critical flow (paper fill, backtest, alert, `/api/v1/health`); GitHub Actions (lint, typecheck, vitest, web build, gitleaks, Playwright)
 - Safety gates: LIVE remapped to PAPER; `canBroadcast: false`; `isLiveTradingAllowed()` always false; `READ_ONLY` blocks paper fills; proposal upsert-by-id; CSRF origin check on mutating POST
 
 ## WHAT ACTUALLY RUNS
@@ -23,12 +23,12 @@
 | Persistence | memory unless `DATABASE_URL` is set |
 | Market data | DEMO default (Birdeye OHLCV v3 if keyed) |
 | On-chain | DEMO default (Helius DAS + largest-accounts if keyed) |
-| Execution | Jupiter Swap API v2 `/order` quote/route (v1 `/quote` fallback); never broadcast |
+| Execution | Jupiter Swap API V2 GET `/order` when keyed; labeled DEMO otherwise; fail-closed; never broadcast |
 | Research LLM | Mock default |
 
 ## TEST RESULTS
 
-See [docs/V1.5-HANDOFF.md](./docs/V1.5-HANDOFF.md) for the counts measured in this pass.
+Re-run `pnpm exec vitest run` in this checkout. Do not trust stale counts in V1.5 docs.
 
 ## ARCHITECTURE
 
@@ -54,6 +54,6 @@ See [docs/limitations.md](./docs/limitations.md).
 ---
 
 **Mode:** PAPER · LIVE broadcasting disabled  
-**Branch:** `v2-goal-mode` (merge to `main`)  
+**Branch:** `sentinel-v3-readiness`  
 **Audit:** [docs/AUDIT-GROK.md](./docs/AUDIT-GROK.md)  
 **V1.5:** [docs/V1.5-HANDOFF.md](./docs/V1.5-HANDOFF.md)

@@ -1,0 +1,29 @@
+{
+  "name": "@sat/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "sentinel": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@sat/shared": "workspace:*",
+    "@sat/pipeline": "workspace:*",
+    "@sat/database": "workspace:*",
+    "@sat/wallet-intel": "workspace:*",
+    "@sat/backtest": "workspace:*",
+    "@sat/alerts": "workspace:*",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

@@ -27,6 +27,7 @@ const INTERVAL_MS: Record<OhlcvInterval, number> = {
   "15m": 900_000,
   "1h": 3_600_000,
   "4h": 14_400_000,
+  "1d": 86_400_000,
 };
 
 const BIRDEYE_TYPE: Record<OhlcvInterval, string> = {
@@ -35,6 +36,7 @@ const BIRDEYE_TYPE: Record<OhlcvInterval, string> = {
   "15m": "15m",
   "1h": "1H",
   "4h": "4H",
+  "1d": "1D",
 };
 
 export function intervalMs(interval: OhlcvInterval): number {
@@ -182,9 +184,14 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
         });
         if (parsed.success) out.push(parsed.data);
       }
-      return out.length ? out : this.fallback.listTrending(limit);
-    } catch {
-      return this.fallback.listTrending(limit);
+      if (!out.length) {
+        throw new Error("Birdeye trending returned 0 validated rows");
+      }
+      return out;
+    } catch (err) {
+      throw new Error(
+        `Birdeye trending failed (no demo fallback): ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
@@ -195,7 +202,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
       if (!res.ok) throw new Error(`Birdeye HTTP ${res.status}`);
       const json = (await res.json()) as { data?: Record<string, unknown> };
       const t = json.data;
-      if (!t) return this.fallback.getAsset(mint);
+      if (!t) return null;
       const parsed = CandidateAssetSchema.safeParse({
         mint,
         symbol: String(t.symbol ?? "UNK"),
@@ -217,9 +224,11 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
         riskFlags: [],
         isDemo: false,
       });
-      return parsed.success ? parsed.data : this.fallback.getAsset(mint);
+      return parsed.success ? parsed.data : null;
     } catch {
-      return this.fallback.getAsset(mint);
+      const demo = getDemoCandidates().some((c) => c.mint === mint);
+      if (demo) return this.fallback.getAsset(mint);
+      return null;
     }
   }
 

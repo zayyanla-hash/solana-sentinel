@@ -9,6 +9,11 @@ import {
   getSystemHealth,
   getOperatingMode,
   markToMarket,
+  runStrategyLab,
+  createAlertRule,
+  analyzeWallet,
+  generateSmartMoneySignals,
+  listWalletIntelligence,
 } from "@sat/pipeline";
 import { ActionSchema, mutatingRequestDenied } from "@/lib/request-guard";
 import { isPublicDemo } from "@sat/shared";
@@ -32,6 +37,8 @@ export async function GET() {
     ...state,
     health: await getSystemHealth(db),
     operatingMode: getOperatingMode(),
+    wallets: await listWalletIntelligence(),
+    sentinelSignals: await generateSmartMoneySignals(db).catch(() => []),
   });
 }
 
@@ -73,6 +80,8 @@ export async function POST(req: Request) {
           ...(await db.getState()),
           health: await getSystemHealth(db),
           operatingMode: getOperatingMode(),
+          wallets: await listWalletIntelligence(),
+          sentinelSignals: await generateSmartMoneySignals(db).catch(() => []),
         });
       }
       case "evaluate":
@@ -88,6 +97,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ experiment: await runDemoExperiment(db) });
       case "mark":
         return NextResponse.json({ portfolio: await markToMarket(db) });
+      case "backtest":
+        return NextResponse.json({
+          backtest: await runStrategyLab({
+            mint: "mint" in body ? body.mint : undefined,
+            walkForward: "walkForward" in body ? body.walkForward : true,
+            db,
+          }),
+        });
+      case "alert_create":
+        return NextResponse.json({
+          rule: createAlertRule({
+            name: body.name,
+            trigger: body.trigger,
+            threshold: body.threshold ?? null,
+          }),
+        });
+      case "wallet_analyze":
+        return NextResponse.json({ score: await analyzeWallet(body.address) });
       case "reset":
         await db.reset(Number(process.env.PAPER_STARTING_CAPITAL_USD ?? 100_000));
         await runFullResearchPass(db);

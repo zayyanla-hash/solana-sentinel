@@ -27,6 +27,8 @@ import { proposeSizeUsd, markPositions } from "@sat/portfolio";
 import { PaperTradingEngine, applyFillToPortfolio } from "@sat/paper-trading";
 import { runExperimentReplay } from "@sat/experiments";
 import { getProviders } from "./providers";
+import { generateSmartMoneySignals } from "./intelligence";
+import { overallStatus, setProviderHealth } from "@sat/observability";
 import {
   decideProposalStatus,
   assertStoredGates,
@@ -35,6 +37,17 @@ import {
 } from "./gates";
 
 export { getProviders, resetProvidersForTests } from "./providers";
+export {
+  listWalletIntelligence,
+  analyzeWallet,
+  walletGraphForDemo,
+  generateSmartMoneySignals,
+  runStrategyLab,
+  createAlertRule,
+  emitTestAlert,
+  getAlertEngine,
+  resetIntelligenceForTests,
+} from "./intelligence";
 export {
   decideProposalStatus,
   assertStoredGates,
@@ -78,11 +91,12 @@ export async function runDiscoveryCycle(db: Database = getDatabase()) {
 async function loadHistorical(mint: string): Promise<HistoricalBars | undefined> {
   const { market } = getProviders();
   try {
-    const [b5, b15, b1h, b4h, sol5] = await Promise.all([
+    const [b5, b15, b1h, b4h, b1d, sol5] = await Promise.all([
       market.getOhlcv(mint, "5m", 120),
       market.getOhlcv(mint, "15m", 96),
       market.getOhlcv(mint, "1h", 72),
       market.getOhlcv(mint, "4h", 48),
+      market.getOhlcv(mint, "1d", 90),
       market.getOhlcv(WSOL, "5m", 120),
     ]);
     const empty = ![b5, b15, b1h, b4h].some((b) => b.length);
@@ -92,6 +106,7 @@ async function loadHistorical(mint: string): Promise<HistoricalBars | undefined>
       "15m": b15,
       "1h": b1h,
       "4h": b4h,
+      "1d": b1d,
       sol: { "5m": sol5 },
       asOfMs: Date.now(),
     };
@@ -409,6 +424,7 @@ export async function runFullResearchPass(db: Database = getDatabase()) {
     const p = await evaluateMint(c.mint, db);
     if (p) proposals.push(p);
   }
+  await generateSmartMoneySignals(db);
   return proposals;
 }
 
@@ -443,6 +459,37 @@ export async function getSystemHealth(db: Database = getDatabase()) {
   const demoMode = market.isDemo || onchain.isDemo || Boolean(state.candidates.find((c) => c.isDemo));
   const lastDiscovery = state.events.find((e) => e.type === "TOKEN_DISCOVERED")?.timestamp ?? null;
   const lastPaper = state.orders[0]?.createdAt ?? null;
+  const providerRows = [
+    {
+      name: market.name,
+      status: market.isDemo ? ("demo_fallback" as const) : ("healthy" as const),
+      isDemo: market.isDemo,
+      lastSuccessAt: lastDiscovery,
+      lastError: null,
+      latencyMs: null,
+      dataAgeMs: null,
+    },
+    {
+      name: onchain.name,
+      status: onchain.isDemo ? ("demo_fallback" as const) : ("healthy" as const),
+      isDemo: onchain.isDemo,
+      lastSuccessAt: lastDiscovery,
+      lastError: null,
+      latencyMs: null,
+      dataAgeMs: null,
+    },
+    {
+      name: execution.name,
+      status: execution.isDemo ? ("demo_fallback" as const) : ("healthy" as const),
+      isDemo: execution.isDemo,
+      lastSuccessAt: lastPaper,
+      lastError: null,
+      latencyMs: null,
+      dataAgeMs: null,
+    },
+  ];
+  for (const p of providerRows) setProviderHealth(p);
+  const status = overallStatus(providerRows);
   return {
     operatingMode: getOperatingMode(),
     liveTradingAllowed: isLiveTradingAllowed(),
@@ -451,6 +498,7 @@ export async function getSystemHealth(db: Database = getDatabase()) {
     databaseStatus: db.mode === "postgres" ? "postgres" : "memory",
     parseErrors: state.parseErrors,
     demoMode,
+    healthStatus: status,
     publicDemo: isPublicDemo(),
     marketDataProvider: market.name,
     onChainProvider: onchain.name,
@@ -472,9 +520,11 @@ export async function getSystemHealth(db: Database = getDatabase()) {
       onchain: onchain.name,
       onchainIsDemo: onchain.isDemo,
       execution: execution.name,
+      executionIsDemo: execution.isDemo,
       research: process.env.OPENAI_API_KEY ? "openai-compatible" : "mock",
       researchIsMock: !process.env.OPENAI_API_KEY,
       researchName: research.constructor?.name ?? "research",
     },
+    providerHealth: providerRows,
   };
 }

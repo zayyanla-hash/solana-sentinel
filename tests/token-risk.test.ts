@@ -72,7 +72,7 @@ describe("token-risk v1.5 fixtures", () => {
     });
     expect(a.riskTier).not.toBe("SAFE" as never);
     expect(a.riskTier).toBe("LOWER_RISK");
-    expect(a.configVersion).toBe("token-risk-v1.5");
+    expect(a.configVersion).toBe("token-risk-v2");
   });
 
   it("mint authority alone elevates risk", () => {

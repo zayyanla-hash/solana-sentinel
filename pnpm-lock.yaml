@@ -40,17 +40,60 @@ importers:
         specifier: ^3.0.9
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
 
+  apps/cli:
+    dependencies:
+      '@sat/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
+      '@sat/backtest':
+        specifier: workspace:*
+        version: link:../../packages/backtest
+      '@sat/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@sat/pipeline':
+        specifier: workspace:*
+        version: link:../../packages/pipeline
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@sat/wallet-intel':
+        specifier: workspace:*
+        version: link:../../packages/wallet-intel
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.10
+        version: 22.20.1
+      tsx:
+        specifier: ^4.19.3
+        version: 4.23.13
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
   apps/web:
     dependencies:
+      '@sat/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@sat/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
+      '@sat/backtest':
+        specifier: workspace:*
+        version: link:../../packages/backtest
       '@sat/database':
         specifier: workspace:*
         version: link:../../packages/database
       '@sat/discovery':
         specifier: workspace:*
         version: link:../../packages/discovery
+      '@sat/entitlements':
+        specifier: workspace:*
+        version: link:../../packages/entitlements
       '@sat/execution':
         specifier: workspace:*
         version: link:../../packages/execution
@@ -60,6 +103,9 @@ importers:
       '@sat/market-data':
         specifier: workspace:*
         version: link:../../packages/market-data
+      '@sat/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@sat/paper-trading':
         specifier: workspace:*
         version: link:../../packages/paper-trading
@@ -87,9 +133,21 @@ importers:
       '@sat/solana':
         specifier: workspace:*
         version: link:../../packages/solana
+      '@sat/streaming':
+        specifier: workspace:*
+        version: link:../../packages/streaming
       '@sat/token-risk':
         specifier: workspace:*
         version: link:../../packages/token-risk
+      '@sat/wallet-graph':
+        specifier: workspace:*
+        version: link:../../packages/wallet-graph
+      '@sat/wallet-intel':
+        specifier: workspace:*
+        version: link:../../packages/wallet-intel
+      '@sat/x402':
+        specifier: workspace:*
+        version: link:../../packages/x402
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -171,11 +229,46 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
+  packages/alerts:
+    dependencies:
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
   packages/analytics:
     dependencies:
       '@sat/shared':
         specifier: workspace:*
         version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/backtest:
+    dependencies:
+      '@sat/analytics':
+        specifier: workspace:*
+        version: link:../analytics
+      '@sat/paper-trading':
+        specifier: workspace:*
+        version: link:../paper-trading
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@sat/signals':
+        specifier: workspace:*
+        version: link:../signals
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -214,6 +307,19 @@ importers:
       '@sat/market-data':
         specifier: workspace:*
         version: link:../market-data
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/entitlements:
+    dependencies:
       '@sat/shared':
         specifier: workspace:*
         version: link:../shared
@@ -273,6 +379,19 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
+  packages/observability:
+    dependencies:
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
   packages/paper-trading:
     dependencies:
       '@sat/execution':
@@ -291,15 +410,24 @@ importers:
 
   packages/pipeline:
     dependencies:
+      '@sat/alerts':
+        specifier: workspace:*
+        version: link:../alerts
       '@sat/analytics':
         specifier: workspace:*
         version: link:../analytics
+      '@sat/backtest':
+        specifier: workspace:*
+        version: link:../backtest
       '@sat/database':
         specifier: workspace:*
         version: link:../database
       '@sat/discovery':
         specifier: workspace:*
         version: link:../discovery
+      '@sat/entitlements':
+        specifier: workspace:*
+        version: link:../entitlements
       '@sat/execution':
         specifier: workspace:*
         version: link:../execution
@@ -309,6 +437,9 @@ importers:
       '@sat/market-data':
         specifier: workspace:*
         version: link:../market-data
+      '@sat/observability':
+        specifier: workspace:*
+        version: link:../observability
       '@sat/paper-trading':
         specifier: workspace:*
         version: link:../paper-trading
@@ -333,9 +464,18 @@ importers:
       '@sat/solana':
         specifier: workspace:*
         version: link:../solana
+      '@sat/streaming':
+        specifier: workspace:*
+        version: link:../streaming
       '@sat/token-risk':
         specifier: workspace:*
         version: link:../token-risk
+      '@sat/wallet-graph':
+        specifier: workspace:*
+        version: link:../wallet-graph
+      '@sat/wallet-intel':
+        specifier: workspace:*
+        version: link:../wallet-intel
       zod:
         specifier: ^3.24.2
         version: 3.25.76
@@ -435,7 +575,62 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
+  packages/streaming:
+    dependencies:
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
   packages/token-risk:
+    dependencies:
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/wallet-graph:
+    dependencies:
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@sat/wallet-intel':
+        specifier: workspace:*
+        version: link:../wallet-intel
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/wallet-intel:
+    dependencies:
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/x402:
     dependencies:
       '@sat/shared':
         specifier: workspace:*

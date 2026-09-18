@@ -29,6 +29,32 @@ export const ActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("experiment") }),
   z.object({ action: z.literal("reset") }),
   z.object({ action: z.literal("mark") }),
+  z.object({
+    action: z.literal("backtest"),
+    mint: SolanaAddressSchema.optional(),
+    walkForward: z.boolean().optional(),
+  }),
+  z.object({
+    action: z.literal("alert_create"),
+    name: z.string().min(1).max(80),
+    trigger: z.enum([
+      "SENTINEL_SCORE_CROSS",
+      "TRACKED_WALLET_BUY",
+      "TRACKED_WALLET_SELL",
+      "MULTI_WALLET_ACCUMULATION",
+      "LIQUIDITY_SPIKE",
+      "HOLDER_CHANGE",
+      "TOKEN_RISK_DOWNGRADE",
+      "TOKEN_RISK_IMPROVEMENT",
+      "PRICE_BREAKOUT",
+      "VOLUME_ACCELERATION",
+      "PORTFOLIO_DRAWDOWN",
+      "PAPER_ENTRY",
+      "PAPER_EXIT",
+    ]),
+    threshold: z.number().nullable().optional(),
+  }),
+  z.object({ action: z.literal("wallet_analyze"), address: SolanaAddressSchema }),
 ]);
 
 export type ApiAction = z.infer<typeof ActionSchema>;

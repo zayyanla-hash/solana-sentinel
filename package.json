@@ -1,7 +1,7 @@
 {
   "name": "solana-sentinel",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Solana Sentinel — Solana Agentic Trading Research Platform. PAPER ONLY. No live broadcast.",
   "packageManager": "pnpm@10.33.3",
   "engines": {
@@ -11,7 +11,7 @@
     "build": "pnpm -r --filter=./packages/* run build && pnpm --filter=@sat/web run build && pnpm --filter=@sat/worker run build",
     "dev": "pnpm --filter=@sat/web run dev",
     "dev:worker": "pnpm --filter=@sat/worker run dev",
-    "lint": "eslint --max-warnings 0 packages apps/worker tests && pnpm --filter @sat/web run lint",
+    "lint": "eslint --max-warnings 0 packages apps/worker apps/cli tests && pnpm --filter @sat/web run lint",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "test:unit": "vitest run",

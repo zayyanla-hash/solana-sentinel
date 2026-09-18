@@ -101,6 +101,29 @@ type StatePayload = {
   equityHistory: Array<{ t: string; nav: number }>;
   health: Health;
   operatingMode: string;
+  wallets?: Array<{
+    address: string;
+    score: number;
+    confidence: number;
+    sampleSize: number;
+    reasonCodes: string[];
+    positiveEvidence: string[];
+    negativeEvidence: string[];
+    dataFreshness: string;
+    isDemo: boolean;
+    neverGuaranteed: true;
+  }>;
+  sentinelSignals?: Array<{
+    id: string;
+    symbol: string;
+    signalType: string;
+    score: number;
+    confidence: number;
+    explanation: string[];
+    invalidationConditions: string[];
+    tokenRisk: string;
+    isDemo: boolean;
+  }>;
 };
 
 async function fetchState(): Promise<StatePayload> {
@@ -181,6 +204,14 @@ export default function DashboardPage() {
   const [selectedMint, setSelectedMint] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [view, setView] = useState<"terminal" | "wallets" | "signals" | "lab" | "alerts">("terminal");
+  const [labMint, setLabMint] = useState<string>("");
+  const [backtest, setBacktest] = useState<{
+    metrics: { totalReturnPct: number; maxDrawdownPct: number; tradeCount: number } | null;
+    warnings: string[];
+    equity: number[];
+    label: string;
+  } | null>(null);
 
   const reload = useCallback(() => {
     startTransition(async () => {
@@ -287,6 +318,37 @@ export default function DashboardPage() {
         )}
 
         {data && (
+          <>
+            <nav className="flex flex-wrap gap-2" data-testid="terminal-nav">
+              {(
+                [
+                  ["terminal", "Terminal"],
+                  ["wallets", "Wallets"],
+                  ["signals", "Signals"],
+                  ["lab", "Strategy Lab"],
+                  ["alerts", "Alerts"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  data-testid={`tab-${id}`}
+                  className={`border px-3 py-1.5 text-xs uppercase tracking-wide ${
+                    view === id
+                      ? "border-[var(--accent)] text-[var(--accent)]"
+                      : "border-[var(--line)] text-[var(--muted)]"
+                  }`}
+                  onClick={() => setView(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+            {msg && (
+              <p className="text-xs text-[var(--accent-2)]" data-testid="action-msg">
+                {msg}
+              </p>
+            )}
+          {view === "terminal" && (
           <>
             <section className="anim-fade grid gap-4 md:grid-cols-4">
               <div className="panel p-4 md:col-span-2">
@@ -395,7 +457,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 {msg && (
-                  <p className="mt-3 text-xs text-[var(--accent-2)]" data-testid="action-msg">
+                  <p className="mt-3 text-xs text-[var(--accent-2)]">
                     {msg}
                   </p>
                 )}
@@ -701,6 +763,136 @@ export default function DashboardPage() {
                 )}
               </section>
             )}
+          </>
+          )}
+
+          {view === "wallets" && (
+            <section className="panel" data-testid="wallet-intel-panel">
+              <div className="border-b border-[var(--line)] px-4 py-3">
+                <h2 className="text-sm font-semibold">Wallet credibility (DEMO fixtures)</h2>
+                <p className="text-xs text-[var(--muted)]">
+                  Not guaranteed profitable. Sample-size, moonshot, wash, and creator adjustments applied.
+                </p>
+              </div>
+              <div className="divide-y divide-[var(--line)]">
+                {(data.wallets ?? []).map((w) => (
+                  <div key={w.address} className="px-4 py-3 text-sm" data-testid={`wallet-row-${w.address.slice(0, 6)}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="mono text-xs">{w.address}</span>
+                      <span className="mono">
+                        score {w.score} · conf {(w.confidence * 100).toFixed(0)}% · n={w.sampleSize}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--muted)]">{w.reasonCodes.join(" · ")}</p>
+                    <p className="mt-1 text-xs text-[var(--good)]">{w.positiveEvidence[0]}</p>
+                    <p className="text-xs text-[var(--warn)]">{w.negativeEvidence[0]}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {view === "signals" && (
+            <section className="panel" data-testid="sentinel-signals-panel">
+              <div className="border-b border-[var(--line)] px-4 py-3">
+                <h2 className="text-sm font-semibold">Sentinel smart-money signals</h2>
+                <p className="text-xs text-[var(--muted)]">
+                  Score is evidence strength, not expected return. Invalidation conditions are listed.
+                </p>
+              </div>
+              {(data.sentinelSignals ?? []).length === 0 && (
+                <p className="p-4 text-sm text-[var(--muted)]">No signals yet — run a research pass.</p>
+              )}
+              {(data.sentinelSignals ?? []).map((s) => (
+                <div key={s.id} className="border-b border-[var(--line)] px-4 py-3 text-sm">
+                  <div className="flex justify-between">
+                    <span>
+                      {s.symbol} · {s.signalType}
+                    </span>
+                    <span className="mono">
+                      {s.score.toFixed(1)} / conf {(s.confidence * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--muted)]">{s.explanation[0]}</p>
+                  <p className="text-xs text-[var(--warn)]">Invalid if: {s.invalidationConditions[0]}</p>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {view === "lab" && (
+            <section className="panel p-4" data-testid="strategy-lab-panel">
+              <h2 className="text-sm font-semibold">Strategy Lab</h2>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                Deterministic backtest with lagged fills, costs, and walk-forward. PAPER/BACKTEST only.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <select
+                  className="border border-[var(--line)] bg-[var(--bg-2)] px-2 py-1 text-xs"
+                  value={labMint}
+                  onChange={(e) => setLabMint(e.target.value)}
+                >
+                  <option value="">Default candidate</option>
+                  {data.candidates.map((c) => (
+                    <option key={c.mint} value={c.mint}>
+                      {c.symbol}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="border border-[var(--accent)] px-3 py-1.5 text-xs"
+                  data-testid="btn-run-backtest"
+                  disabled={pending || Boolean(data.health.publicDemo)}
+                  onClick={() => {
+                    startTransition(async () => {
+                      try {
+                        const result = await postAction("backtest", labMint ? { mint: labMint } : {});
+                        setBacktest(result.backtest);
+                        setMsg(`Backtest ${result.backtest.label} complete`);
+                      } catch (e) {
+                        setMsg(e instanceof Error ? e.message : String(e));
+                      }
+                    });
+                  }}
+                >
+                  Run backtest
+                </button>
+              </div>
+              {backtest && (
+                <div className="mt-4 text-sm" data-testid="backtest-result">
+                  <p className="text-xs uppercase text-[var(--muted)]">{backtest.label}</p>
+                  {backtest.metrics ? (
+                    <ul className="mt-2 space-y-1 mono text-xs">
+                      <li>Return {backtest.metrics.totalReturnPct.toFixed(2)}%</li>
+                      <li>Max DD {backtest.metrics.maxDrawdownPct.toFixed(2)}%</li>
+                      <li>Trades {backtest.metrics.tradeCount}</li>
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-[var(--warn)]">Metrics hidden — insufficient sample</p>
+                  )}
+                  <Sparkline values={backtest.equity} />
+                  <p className="mt-2 text-xs text-[var(--muted)]">{backtest.warnings.join(" · ")}</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {view === "alerts" && (
+            <section className="panel p-4" data-testid="alerts-panel">
+              <h2 className="text-sm font-semibold">Alerts</h2>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                Internal channel is live. Telegram/Discord/Email are stubs until credentials exist.
+              </p>
+              <button
+                className="mt-3 border border-[var(--line)] px-3 py-1.5 text-xs"
+                data-testid="btn-create-alert"
+                disabled={pending || Boolean(data.health.publicDemo)}
+                onClick={() => run("alert_create", { name: "score-cross", trigger: "SENTINEL_SCORE_CROSS" })}
+              >
+                Create score-cross alert
+              </button>
+            </section>
+          )}
           </>
         )}
       </main>

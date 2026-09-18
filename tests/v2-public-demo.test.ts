@@ -61,15 +61,37 @@ describe("V2 public demo and provider honesty", () => {
 
   it("Jupiter v2 provider name and plan stay paper-only", async () => {
     const jup = new JupiterExecutionProvider("https://api.jup.ag/swap/v2", undefined);
-    expect(jup.name).toBe("jupiter-v2");
-    const quote = await jup.quote({
-      inputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-      outputMint: "So11111111111111111111111111111111111111112",
-      amount: "1000000",
-    });
-    const plan = await jup.plan(quote, "PAPER");
-    expect(plan.canBroadcast).toBe(false);
-    expect(plan.mode).toBe("PAPER");
+    expect(jup.name).toBe("jupiter-swap-v2");
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        json: async () => ({
+          inputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          outputMint: "So11111111111111111111111111111111111111112",
+          inAmount: "1000000",
+          outAmount: "990000",
+          priceImpactPct: 0.01,
+          slippageBps: 50,
+          router: "metis",
+          routePlan: [],
+        }),
+      }) as Response) as typeof fetch;
+    try {
+      const quote = await jup.quote({
+        inputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        outputMint: "So11111111111111111111111111111111111111112",
+        amount: "1000000",
+      });
+      expect(quote.isDemo).toBe(false);
+      expect(quote.provider).toBe("jupiter-swap-v2");
+      const plan = await jup.plan(quote, "PAPER");
+      expect(plan.canBroadcast).toBe(false);
+      expect(plan.mode).toBe("PAPER");
+      expect(plan.notes.join(" ")).toMatch(/execute is not implemented/i);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 
   it("hosted DATABASE_URL enables TLS; local does not", () => {

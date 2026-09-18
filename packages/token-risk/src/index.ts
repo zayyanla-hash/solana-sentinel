@@ -6,7 +6,7 @@ import {
   newId,
 } from "@sat/shared";
 
-export const TOKEN_RISK_CONFIG_VERSION = "token-risk-v1.5";
+export const TOKEN_RISK_CONFIG_VERSION = "token-risk-v2";
 
 /** Absence of any of these forces INSUFFICIENT_DATA regardless of score. */
 export const REQUIRED_ONCHAIN_FIELDS = [
@@ -26,9 +26,14 @@ export interface OnChainRiskInput {
   topHolderConcentrationPct?: number | null;
   top5HolderConcentrationPct?: number | null;
   top10HolderConcentrationPct?: number | null;
+  top20HolderConcentrationPct?: number | null;
   exitLiquidityUsd?: number | null;
   estimatedPriceImpactPct?: number | null;
   metadataQuality?: number | null;
+  jupiterVerified?: boolean | null;
+  jupiterOrganicScore?: number | null;
+  creatorHoldingPct?: number | null;
+  lpConcentrationPct?: number | null;
 }
 
 function tierFromScore(
@@ -123,8 +128,43 @@ export function assessTokenRisk(
     else if (concentration > 40)
       bump(10, "HOLDER_CONCENTRATION_MODERATE", `Top holders control ${concentration.toFixed(1)}%`);
   }
+  const top20 = onChain.top20HolderConcentrationPct ?? null;
   if (top5 == null) missing.push("top5HolderConcentrationPct");
   if (top10 == null) missing.push("top10HolderConcentrationPct");
+  if (top20 == null) missing.push("top20HolderConcentrationPct");
+
+  if (onChain.jupiterVerified === true) {
+    available++;
+    observations++;
+    reasons.push("Jupiter verification flag present — not a safety rating");
+  } else if (onChain.jupiterVerified == null) {
+    missing.push("jupiterVerified");
+  }
+
+  if (onChain.jupiterOrganicScore == null) missing.push("jupiterOrganicScore");
+  else {
+    available++;
+    observations++;
+    if (onChain.jupiterOrganicScore < 30) {
+      bump(10, "LOW_ORGANIC_SCORE", `Jupiter organic score ${onChain.jupiterOrganicScore}`);
+    }
+  }
+
+  if (onChain.creatorHoldingPct != null && onChain.creatorHoldingPct > 15) {
+    bump(12, "CREATOR_HOLDINGS", `Creator holds ${onChain.creatorHoldingPct.toFixed(1)}%`);
+    available++;
+    observations++;
+  } else if (onChain.creatorHoldingPct == null) {
+    missing.push("creatorHoldingPct");
+  }
+
+  if (onChain.lpConcentrationPct != null && onChain.lpConcentrationPct > 80) {
+    bump(10, "LP_CONCENTRATION", `LP concentration ${onChain.lpConcentrationPct.toFixed(1)}%`);
+    available++;
+    observations++;
+  } else if (onChain.lpConcentrationPct == null) {
+    missing.push("lpConcentrationPct");
+  }
 
   const liq = asset.liquidityUsd;
   if (liq == null) missing.push("liquidityUsd");
@@ -219,8 +259,13 @@ export function assessTokenRisk(
       estimatedPriceImpactPct: impact ?? null,
       top5HolderConcentrationPct: top5,
       top10HolderConcentrationPct: top10,
+      top20HolderConcentrationPct: top20,
       transferHook: onChain.transferHook ?? null,
       token2022Extensions: onChain.token2022Extensions ?? null,
+      jupiterVerified: onChain.jupiterVerified ?? null,
+      jupiterOrganicScore: onChain.jupiterOrganicScore ?? null,
+      creatorHoldingPct: onChain.creatorHoldingPct ?? null,
+      lpConcentrationPct: onChain.lpConcentrationPct ?? null,
       missingFields: missing,
     },
     assessedAt: nowIso(),

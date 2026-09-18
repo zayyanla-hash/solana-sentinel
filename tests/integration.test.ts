@@ -180,16 +180,16 @@ describe("live-mode safety gates", () => {
     expect(plan.canBroadcast).toBe(false);
   });
 
-  it("jupiter provider falls back without killing process", async () => {
-    const jup = new JupiterExecutionProvider("https://lite-api.jup.ag/swap/v1", undefined);
-    const quote = await jup.quote({
-      inputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-      outputMint: "So11111111111111111111111111111111111111112",
-      amount: "1000000",
-    });
-    expect(quote.inAmount).toBeTruthy();
-    const plan = await jup.plan(quote, "PAPER");
-    expect(plan.canBroadcast).toBe(false);
+  it("jupiter provider fails closed without killing process or returning demo data", async () => {
+    const { QuoteProviderError } = await import("@sat/execution");
+    const jup = new JupiterExecutionProvider("http://127.0.0.1:1", undefined);
+    await expect(
+      jup.quote({
+        inputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        outputMint: "So11111111111111111111111111111111111111112",
+        amount: "1000000",
+      }),
+    ).rejects.toBeInstanceOf(QuoteProviderError);
   });
 
   it("jupiter plan rejects LIVE mode even with unlock env present", async () => {
@@ -202,8 +202,9 @@ describe("live-mode safety gates", () => {
     process.env.OPERATING_MODE = "LIVE";
     process.env.LIVE_BROADCAST_UNLOCK = "I_UNDERSTAND_THE_RISKS";
     try {
-      const jup = new JupiterExecutionProvider("https://lite-api.jup.ag/swap/v1", undefined);
-      const quote = await jup.quote({
+      const jup = new JupiterExecutionProvider("http://127.0.0.1:1", undefined);
+      const demo = new DemoExecutionProvider();
+      const quote = await demo.quote({
         inputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
         outputMint: "So11111111111111111111111111111111111111112",
         amount: "1000000",

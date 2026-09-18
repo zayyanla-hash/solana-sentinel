@@ -29,6 +29,7 @@ export {
   computeHistoricalSignals,
   type HistoricalBars,
 } from "./historical";
+export { buildSentinelSignals } from "./sentinel";
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));

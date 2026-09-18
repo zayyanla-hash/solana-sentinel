@@ -68,6 +68,14 @@ export class MockResearchProvider implements ResearchProvider {
             "Demo research is not investment advice",
             "LLM output cannot override risk/policy engines",
           ],
+      summary: injectionSuspected
+        ? "Blocked advisory summary"
+        : `Advisory-only notes for ${asset.symbol}. Deterministic engines remain authoritative.`,
+      bullCase: injectionSuspected ? [] : ["Liquidity-adjusted momentum is observable in the snapshot"],
+      bearCase: injectionSuspected ? [] : ["Snapshot data may be DEMO and is not a forecast"],
+      riskFactors: injectionSuspected ? [] : ["Token-risk and policy gates can reject independently"],
+      unknowns: ["On-chain holder quality not fully observed", "Execution quality unknown until a live quote"],
+      citations: ["demo-mock"],
       confidence: injectionSuspected ? 0.1 : 0.55,
       sources: ["demo-mock", "untrusted-metadata-sanitized"],
       isMock: true,

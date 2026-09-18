@@ -4,7 +4,7 @@
 
 **PAPER ONLY. LIVE OFF. `canBroadcast=false`.**
 
-Deterministic, agent-assisted Solana research and paper-trading terminal. Discovery, historical signals, Token-2022-aware token-risk, policy and portfolio-risk gates, bounded LLM research, Jupiter quote/route modeling, simulated fills, Postgres-ready persistence, and experiment analytics with provenance.
+Deterministic, agent-assisted Solana research and paper-trading terminal. Discovery, historical signals, Token-2022-aware token-risk v2, wallet credibility, smart-money signals, walk-forward backtests, policy and portfolio-risk gates, bounded LLM research, Jupiter Swap API V2 quote/route modeling (never `/execute`), simulated fills, versioned `/api/v1`, Postgres-ready persistence, and experiment analytics with provenance.
 
 > Not investment advice. Not a fatwa authority. Risk tiers never use the label “SAFE”.
 >
@@ -56,6 +56,12 @@ See SECURITY.md.
 ## Docs
 
 - docs/architecture.md
+- docs/API.md
+- docs/wallet-intelligence.md
+- docs/backtesting.md
+- docs/monetization.md
+- docs/PRODUCT-STRATEGY.md
+- docs/providers.md
 - docs/limitations.md
 - docs/V2-HANDOFF.md
 - docs/V1.5-HANDOFF.md (historical)

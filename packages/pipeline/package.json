@@ -33,6 +33,13 @@
     "@sat/paper-trading": "workspace:*",
     "@sat/analytics": "workspace:*",
     "@sat/experiments": "workspace:*",
+    "@sat/wallet-intel": "workspace:*",
+    "@sat/wallet-graph": "workspace:*",
+    "@sat/backtest": "workspace:*",
+    "@sat/alerts": "workspace:*",
+    "@sat/observability": "workspace:*",
+    "@sat/entitlements": "workspace:*",
+    "@sat/streaming": "workspace:*",
     "zod": "^3.24.2"
   },
   "devDependencies": {

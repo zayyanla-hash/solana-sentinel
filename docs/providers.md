@@ -7,7 +7,9 @@
 | Jupiter Metis v1 `/quote` | deprecated | REMOVED silent fallback |
 | Birdeye OHLCV | `/defi/v3/ohlcv` then legacy | IMPLEMENTED. Trending fails closed (no silent demo mix) |
 | Helius DAS | `getAsset`, largest accounts | IMPLEMENTED |
-| Helius enhanced-tx | `/v0/addresses/{addr}/transactions` | IMPLEMENTED SWAP→BUY/SELL; transfers remain transfers. Legacy API in maintenance; Parsed Events successor not required yet |
+| Helius Parsed Events | `POST /v1/parsed-events/transaction-history` | PREFERRED |
+| Helius enhanced-tx | `GET /v0/addresses/{addr}/transactions` | FALLBACK only; explicit provenance |
+| Helius Parsed Streams | same normalize pipeline | READY, not enabled |
 | Helius LaserStream | websocket | EXPERIMENTAL adapter + DEMO stream |
 | OpenAI-compatible LLM | chat completions | OPTIONAL, advisory only |
 | x402 facilitator | `https://x402.org/facilitator` | EXPERIMENTAL, flag-off |

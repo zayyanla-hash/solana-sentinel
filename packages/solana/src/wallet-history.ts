@@ -1,21 +1,13 @@
-import { type WalletTrade, SolanaAddressSchema } from "@sat/shared";
+import { SolanaAddressSchema } from "@sat/shared";
 import { DEMO_WALLETS, getDemoWalletTrades } from "@sat/wallet-intel";
-import { parseHeliusEnhancedTx } from "./helius-swap";
+import type { WalletHistoryProvider, WalletHistoryResult } from "./history-types";
+import {
+  CompositeHeliusHistoryProvider,
+  HeliusEnhancedTransactionsProvider,
+  HeliusParsedEventsProvider,
+} from "./parsed-events";
 
-export interface WalletHistoryResult {
-  address: string;
-  trades: WalletTrade[];
-  freshness: "FRESH" | "STALE" | "INSUFFICIENT" | "DEMO";
-  provenance: string[];
-  isDemo: boolean;
-  provider: string;
-}
-
-export interface WalletHistoryProvider {
-  readonly name: string;
-  readonly isDemo: boolean;
-  getTrades(address: string): Promise<WalletHistoryResult>;
-}
+export type { WalletHistoryProvider, WalletHistoryResult } from "./history-types";
 
 export class DemoWalletHistoryProvider implements WalletHistoryProvider {
   readonly name = "demo-wallet-history";
@@ -45,88 +37,46 @@ export class DemoWalletHistoryProvider implements WalletHistoryProvider {
   }
 }
 
-/**
- * Helius enhanced-tx / signatures adapter.
- * Fail-closed: unknown wallets never receive demo trades.
- * Unparseable transfers are labeled UNKNOWN, not BUY.
- * Docs: https://www.helius.dev/docs/api-reference/enhanced-transactions
- */
-export class HeliusWalletHistoryProvider implements WalletHistoryProvider {
-  readonly name = "helius-wallet-history";
-  readonly isDemo = false;
-
-  constructor(
-    private readonly apiKey: string,
-    private readonly base = process.env.HELIUS_API_BASE ?? "https://api.helius.xyz",
-  ) {}
-
+export class FixtureWalletHistoryProvider implements WalletHistoryProvider {
+  readonly name = "fixture";
+  readonly isDemo = true;
+  constructor(private readonly tradesByWallet: Record<string, WalletHistoryResult["trades"]>) {}
   async getTrades(address: string): Promise<WalletHistoryResult> {
-    const parsed = SolanaAddressSchema.safeParse(address);
-    if (!parsed.success) {
-      return {
-        address,
-        trades: [],
-        freshness: "INSUFFICIENT",
-        provenance: ["invalid-address"],
-        isDemo: false,
-        provider: this.name,
-      };
-    }
-    const demoHit = (Object.values(DEMO_WALLETS) as string[]).includes(parsed.data);
-    if (demoHit) {
-      return new DemoWalletHistoryProvider().getTrades(parsed.data);
-    }
-    try {
-      const url = `${this.base.replace(/\/$/, "")}/v0/addresses/${parsed.data}/transactions?api-key=${this.apiKey}&limit=50`;
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!res.ok) {
-        return {
-          address: parsed.data,
-          trades: [],
-          freshness: "INSUFFICIENT",
-          provenance: [`helius HTTP ${res.status}`],
-          isDemo: false,
-          provider: this.name,
-        };
-      }
-      const raw = (await res.json()) as unknown;
-      const rows = Array.isArray(raw) ? raw : [];
-      const trades: WalletTrade[] = [];
-      for (const row of rows) {
-        trades.push(...parseHeliusEnhancedTx(parsed.data, row));
-      }
-      const swaps = trades.filter((t) => t.side === "BUY" || t.side === "SELL").length;
-      const transfers = trades.filter(
-        (t) => t.side === "TRANSFER_IN" || t.side === "TRANSFER_OUT",
-      ).length;
-      return {
-        address: parsed.data,
-        trades,
-        freshness: trades.length ? "FRESH" : "INSUFFICIENT",
-        provenance: [
-          "helius-enhanced-tx",
-          `swaps=${swaps}`,
-          `transfers=${transfers}`,
-          "BUY/SELL only from evidenced SWAP events; plain transfers remain TRANSFER_*",
-        ],
-        isDemo: false,
-        provider: this.name,
-      };
-    } catch (err) {
-      return {
-        address: parsed.data,
-        trades: [],
-        freshness: "INSUFFICIENT",
-        provenance: [`helius error: ${err instanceof Error ? err.message : String(err)}`],
-        isDemo: false,
-        provider: this.name,
-      };
-    }
+    const trades = this.tradesByWallet[address] ?? [];
+    return {
+      address,
+      trades,
+      freshness: trades.length ? "DEMO" : "INSUFFICIENT",
+      provenance: ["fixture"],
+      isDemo: true,
+      provider: this.name,
+    };
   }
 }
 
+/** @deprecated name kept for tests; Enhanced is fallback-only. */
+export class HeliusWalletHistoryProvider extends HeliusEnhancedTransactionsProvider {}
+
 export function createWalletHistoryProvider(): WalletHistoryProvider {
   const key = process.env.HELIUS_API_KEY?.trim();
-  if (key) return new HeliusWalletHistoryProvider(key);
-  return new DemoWalletHistoryProvider();
+  if (!key) return new DemoWalletHistoryProvider();
+  return new CompositeHeliusHistoryProvider(
+    new HeliusParsedEventsProvider(key),
+    new HeliusEnhancedTransactionsProvider(key),
+  );
 }
+
+export function createLiveWalletHistoryProvider(): WalletHistoryProvider {
+  const key = process.env.HELIUS_API_KEY?.trim();
+  if (!key) {
+    throw new Error(
+      "HELIUS_API_KEY is required for live wallet analysis. Set it in .env.local and rerun. Demo fixtures will not be used.",
+    );
+  }
+  return new CompositeHeliusHistoryProvider(
+    new HeliusParsedEventsProvider(key),
+    new HeliusEnhancedTransactionsProvider(key),
+  );
+}
+
+export { DEMO_WALLETS };

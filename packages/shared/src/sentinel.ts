@@ -41,6 +41,12 @@ export const WalletTradeSchema = z.object({
   slippageBps: z.number().nullable(),
   counterparty: SolanaAddressSchema.nullable().optional(),
   isDemo: z.boolean().default(false),
+  sourceSignature: z.string().max(128).optional(),
+  provider: z.string().optional(),
+  classificationConfidence: z.number().min(0).max(1).optional(),
+  priceSource: z.string().nullable().optional(),
+  priceAsOf: z.string().datetime().nullable().optional(),
+  costBasis: z.enum(["PRICED", "UNPRICED", "PARTIAL", "UNKNOWN"]).optional(),
 });
 export type WalletTrade = z.infer<typeof WalletTradeSchema>;
 

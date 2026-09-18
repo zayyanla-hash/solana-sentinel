@@ -4,9 +4,14 @@ import {
   type WalletCredibilityScore,
   type SentinelSignal,
   SentinelSignalSchema,
-  newId,
   nowIso,
 } from "@sat/shared";
+import { createHash } from "node:crypto";
+
+function deterministicId(parts: string[]): string {
+  const h = createHash("sha256").update(parts.join("|")).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
 
 export function buildSentinelSignals(input: {
   asset: CandidateAsset;
@@ -14,8 +19,10 @@ export function buildSentinelSignals(input: {
   wallets: WalletCredibilityScore[];
   tokenRiskTier: string;
   tokenRiskScore: number;
+  asOf?: string;
 }): SentinelSignal[] {
   const { asset, marketSignals, wallets, tokenRiskTier, tokenRiskScore } = input;
+  const asOf = input.asOf ?? nowIso();
   const byName = Object.fromEntries(marketSignals.map((s) => [s.name, s]));
   const mom = byName.momentum?.normalizedScore ?? 0;
   const vol = byName.volume?.normalizedScore ?? 0;
@@ -36,6 +43,7 @@ export function buildSentinelSignals(input: {
     `wallets=${wallets.length}`,
     `tokenRisk=${tokenRiskTier}`,
     asset.isDemo ? "DEMO" : "LIVE_OR_PAPER",
+    ...credible.slice(0, 3).map((w) => `wallet:${w.address}:score=${w.score}:n=${w.sampleSize}`),
   ];
 
   if (independent >= 2 && mom > 0 && tokenRiskTier !== "HIGH_RISK") {
@@ -49,10 +57,10 @@ export function buildSentinelSignals(input: {
     );
     out.push(
       SentinelSignalSchema.parse({
-        id: newId(),
+        id: deterministicId(["MULTI_WALLET_ENTRY", asset.mint, asOf, ...credible.map((w) => w.address).sort()]),
         asset: asset.mint,
         symbol: asset.symbol,
-        timestamp: nowIso(),
+        timestamp: asOf,
         signalType: "MULTI_WALLET_ENTRY",
         score: Number(score.toFixed(1)),
         confidence: Number(confidence.toFixed(3)),
@@ -85,10 +93,10 @@ export function buildSentinelSignals(input: {
     const top = [...credible].sort((a, b) => b.score - a.score)[0]!;
     out.push(
       SentinelSignalSchema.parse({
-        id: newId(),
+        id: deterministicId(["MARKET_CONFIRMED_FLOW", asset.mint, asOf, top.address]),
         asset: asset.mint,
         symbol: asset.symbol,
-        timestamp: nowIso(),
+        timestamp: asOf,
         signalType: "MARKET_CONFIRMED_FLOW",
         score: Number(Math.min(100, 35 + top.score * 0.3 + mom * 25 + vol * 15).toFixed(1)),
         confidence: Number(Math.min(0.8, 0.3 + top.confidence * 0.4).toFixed(3)),
@@ -110,10 +118,10 @@ export function buildSentinelSignals(input: {
   if ((asset.tokenAgeHours ?? 10_000) < 48 && credible.length >= 1) {
     out.push(
       SentinelSignalSchema.parse({
-        id: newId(),
+        id: deterministicId(["NEW_MARKET_ENTRY", asset.mint, asOf, credible[0]!.address]),
         asset: asset.mint,
         symbol: asset.symbol,
-        timestamp: nowIso(),
+        timestamp: asOf,
         signalType: "NEW_MARKET_ENTRY",
         score: 42,
         confidence: 0.28,

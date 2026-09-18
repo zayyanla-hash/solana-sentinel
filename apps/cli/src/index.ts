@@ -8,6 +8,8 @@ import {
   evaluateMint,
   portfolioRiskSnapshot,
   addWatchlistItem,
+  verifyLiveWallet,
+  compareWalletProviders,
 } from "@sat/pipeline";
 import { getDatabase } from "@sat/database";
 import { isLiveTradingAllowed } from "@sat/shared";
@@ -17,7 +19,10 @@ function json(data: unknown): void {
 }
 
 async function main(): Promise<void> {
-  const [cmd, arg] = process.argv.slice(2);
+  const raw = process.argv.slice(2);
+  const flags = new Set(raw.filter((a) => a.startsWith("--")));
+  const positional = raw.filter((a) => !a.startsWith("--"));
+  const [cmd, arg] = positional;
   const db = getDatabase();
   if (!cmd || cmd === "help" || cmd === "--help") {
     json({
@@ -30,6 +35,8 @@ async function main(): Promise<void> {
         "sentinel backtest [mint]",
         "sentinel portfolio-risk",
         "sentinel watchlist-add <mint|wallet>",
+        "sentinel analyze-wallet --live <address>",
+        "sentinel compare-providers <address>",
       ],
       liveTradingAllowed: isLiveTradingAllowed(),
       note: "JSON output. No secrets. PAPER only.",
@@ -47,9 +54,18 @@ async function main(): Promise<void> {
       if (!arg) throw new Error("mint required");
       json({ proposal: await evaluateMint(arg, db) });
       return;
-    case "analyze-wallet":
+    case "analyze-wallet": {
       if (!arg) throw new Error("wallet required");
-      json({ score: await analyzeWallet(arg) });
+      if (flags.has("--live")) {
+        json(await verifyLiveWallet(arg));
+        return;
+      }
+      json({ score: await analyzeWallet(arg, db) });
+      return;
+    }
+    case "compare-providers":
+      if (!arg) throw new Error("address required");
+      json(await compareWalletProviders(arg));
       return;
     case "explain-signal": {
       const signals = await generateSmartMoneySignals(db);

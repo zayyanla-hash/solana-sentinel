@@ -2,7 +2,7 @@
 
 ## STATUS
 
-**V3 PAPER/DEMO research + intelligence platform** — live broadcast still hard-disabled. Wallet credibility, Helius/demo wallet history, Jupiter token intel (null if unkeyed), persisted watchlists/signals/backtests, API keys + quotas, smart-money analogues, walk-forward Strategy Lab, versioned API, entitlements, and a flag-off x402 PoC are implemented.
+**V3 PAPER/DEMO + wallet-intelligence pipeline** — live broadcast still hard-disabled. Parsed Events preferred over Enhanced Transactions; BUY/SELL from wallet deltas + swap evidence; FIFO lots without invented P&L; live `analyze-wallet --live` requires HELIUS_API_KEY.
 
 ## WHAT WAS BUILT
 

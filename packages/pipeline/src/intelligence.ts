@@ -55,9 +55,10 @@ export async function listWalletIntelligence(
 export async function analyzeWallet(
   address: string,
   db: Database = getDatabase(),
+  opts: { live?: boolean } = {},
 ): Promise<WalletCredibilityScore> {
   const demo = Object.values(DEMO_WALLETS) as string[];
-  if (demo.includes(address)) {
+  if (!opts.live && demo.includes(address)) {
     const score = analyzeDemoWallet(address);
     const state = await db.getState();
     await db.setWalletScores([score, ...state.walletScores.filter((s) => s.address !== address)]);

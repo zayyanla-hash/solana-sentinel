@@ -58,6 +58,8 @@ See SECURITY.md.
 - docs/architecture.md
 - docs/API.md
 - docs/wallet-intelligence.md
+- docs/helius-migration.md
+- docs/lot-accounting.md
 - docs/backtesting.md
 - docs/monetization.md
 - docs/PRODUCT-STRATEGY.md

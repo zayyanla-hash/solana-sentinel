@@ -52,6 +52,7 @@ export {
   removeWatchlistItem,
   portfolioRiskSnapshot,
 } from "./intelligence";
+export { verifyLiveWallet, compareWalletProviders } from "./verify-wallet";
 export {
   decideProposalStatus,
   assertStoredGates,

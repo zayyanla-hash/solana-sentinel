@@ -347,14 +347,31 @@ export const KNOWN_PROGRAMS = {
 
 export {
   DemoWalletHistoryProvider,
+  FixtureWalletHistoryProvider,
   HeliusWalletHistoryProvider,
   createWalletHistoryProvider,
+  createLiveWalletHistoryProvider,
   type WalletHistoryProvider,
   type WalletHistoryResult,
 } from "./wallet-history";
+export {
+  HeliusParsedEventsProvider,
+  HeliusEnhancedTransactionsProvider,
+  CompositeHeliusHistoryProvider,
+} from "./parsed-events";
 export {
   fetchJupiterTokenIntel,
   EMPTY_JUPITER_INTEL,
   type JupiterTokenIntel,
 } from "./jupiter-token";
 export { parseHeliusEnhancedTx, isQuoteMint, USDT } from "./helius-swap";
+export { tradesAsOf } from "./replay";
+export {
+  normalizeParsedEventsItem,
+  normalizeEnhancedTx,
+  normalizeStreamMessage,
+  classifyWalletActivity,
+  dedupeTrades,
+  parseParsedEventsItem,
+  compareNormalized,
+} from "./normalize";

@@ -25,6 +25,7 @@ export interface ClosedRoundTrip {
   tokenAgeHoursAtEntry: number | null;
   liquidityUsdAtEntry: number | null;
   priced: boolean;
+  costBasis: "PRICED" | "UNPRICED" | "PARTIAL" | "UNKNOWN";
 }
 
 function median(xs: number[]): number | null {
@@ -83,6 +84,7 @@ export function closeRoundTrips(trades: WalletTrade[]): ClosedRoundTrip[] {
         tokenAgeHoursAtEntry: buy.t.tokenAgeHoursAtEntry ?? null,
         liquidityUsdAtEntry: buy.t.liquidityUsdAtEntry ?? null,
         priced,
+        costBasis: priced ? "PRICED" : buy.t.priceUsd || t.priceUsd ? "PARTIAL" : "UNPRICED",
       });
       buy.remaining -= used;
       remaining -= used;
@@ -145,6 +147,38 @@ export function computePerformance(trades: WalletTrade[]): WalletPerformance {
     consistency,
     tradeCount: trades.filter((t) => t.side === "BUY" || t.side === "SELL").length,
     sampleSize,
+  };
+}
+
+/** FIFO quantity lots. Transfers never open or close trading lots. Accounting method: FIFO. */
+export function lotAudit(trades: WalletTrade[]): {
+  method: "FIFO";
+  opened: number;
+  closed: number;
+  remainingOpen: number;
+  pricedClosed: number;
+  unpricedClosed: number;
+  realizedPnlUsd: number | null;
+} {
+  const closed = closeRoundTrips(trades);
+  const opened = trades.filter((t) => t.side === "BUY").length;
+  const remaining =
+    opened -
+    closed.length +
+    trades.filter((t) => t.side === "SELL").length -
+    closed.length;
+  const pricedClosed = closed.filter((c) => c.priced).length;
+  const unpricedClosed = closed.length - pricedClosed;
+  const realized =
+    pricedClosed > 0 ? closed.filter((c) => c.priced).reduce((s, c) => s + c.pnlUsd, 0) : null;
+  return {
+    method: "FIFO",
+    opened,
+    closed: closed.length,
+    remainingOpen: Math.max(0, remaining),
+    pricedClosed,
+    unpricedClosed,
+    realizedPnlUsd: realized,
   };
 }
 
@@ -440,4 +474,45 @@ export function analyzeDemoWallet(address: string): WalletCredibilityScore {
 
 export function listDemoWalletScores(): WalletCredibilityScore[] {
   return Object.values(DEMO_WALLETS).map((a) => analyzeDemoWallet(a));
+}
+
+export interface WalletQualityReport {
+  trades: number;
+  buyCount: number;
+  sellCount: number;
+  transferCount: number;
+  unknownCount: number;
+  duplicateRate: number;
+  classificationCoverage: number;
+  priceCoverage: number;
+  costBasisCoverage: number;
+  pnlCoverage: number;
+  lots: ReturnType<typeof lotAudit>;
+}
+
+export function walletQualityReport(trades: WalletTrade[], duplicates = 0): WalletQualityReport {
+  const buyCount = trades.filter((t) => t.side === "BUY").length;
+  const sellCount = trades.filter((t) => t.side === "SELL").length;
+  const transferCount = trades.filter(
+    (t) => t.side === "TRANSFER_IN" || t.side === "TRANSFER_OUT",
+  ).length;
+  const unknownCount = trades.filter((t) => t.side === "UNKNOWN").length;
+  const classified = buyCount + sellCount + transferCount;
+  const priced = trades.filter((t) => t.priceUsd != null && t.priceUsd > 0).length;
+  const closed = closeRoundTrips(trades);
+  const pricedClosed = closed.filter((c) => c.priced).length;
+  const denom = Math.max(trades.length, 1);
+  return {
+    trades: trades.length,
+    buyCount,
+    sellCount,
+    transferCount,
+    unknownCount,
+    duplicateRate: duplicates / Math.max(trades.length + duplicates, 1),
+    classificationCoverage: classified / denom,
+    priceCoverage: priced / denom,
+    costBasisCoverage: closed.length ? pricedClosed / closed.length : 0,
+    pnlCoverage: closed.length ? pricedClosed / closed.length : 0,
+    lots: lotAudit(trades),
+  };
 }

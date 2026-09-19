@@ -4,6 +4,8 @@
 
 Professional research terminal for Solana asset discovery, deterministic signals, explainable token-risk, configurable policy checks, bounded LLM research, portfolio risk gates, Jupiter quote/plan (no broadcast), and realistic paper execution with full decision provenance.
 
+This is intentionally an engineering/research system, not a trading promise. It demonstrates event-driven ingestion, domain rules around untrusted external data, bounded model assistance, and safety controls that keep the model below deterministic policy and risk decisions.
+
 > Not investment advice. Not a fatwa authority. Risk tiers never use the label “SAFE”.
 
 ## Architecture
@@ -92,6 +94,13 @@ See [`.env.example`](./.env.example). Optional: `JUPITER_API_KEY`, `HELIUS_API_K
 - External text treated as UNTRUSTED
 
 See [SECURITY.md](./SECURITY.md) and [docs/threat-model.md](./docs/threat-model.md).
+
+## Recruiter lens
+
+- **Messy inputs → normalized events:** provider adapters validate external market and on-chain payloads with Zod before they enter the pipeline.
+- **Business rules are explicit:** policy, token-risk, portfolio-risk, and execution planning remain deterministic and testable.
+- **Automation is bounded:** the research agent can explain and summarize, but cannot override policy, risk, or broadcast controls.
+- **Evidence is preserved:** decisions carry provenance, mode labels, and paper-trade assumptions so outputs can be reviewed after the run.
 
 ## Docs
 

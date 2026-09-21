@@ -9,7 +9,12 @@ import {
 } from "./normalize";
 import type { WalletHistoryProvider, WalletHistoryResult } from "./history-types";
 
-const DEFAULT_HOST = process.env.HELIUS_RPC_URL?.replace(/\/$/, "") ?? "https://mainnet.helius-rpc.com";
+function envUrl(name: string, fallback: string): string {
+  const raw = process.env[name]?.trim();
+  return raw ? raw.replace(/\/$/, "") : fallback;
+}
+
+const DEFAULT_HOST = envUrl("HELIUS_RPC_URL", "https://mainnet.helius-rpc.com");
 
 function redactUrl(url: string): string {
   return url.replace(/api-key=[^&]+/gi, "api-key=REDACTED");
@@ -149,7 +154,7 @@ export class HeliusEnhancedTransactionsProvider implements WalletHistoryProvider
 
   constructor(
     private readonly apiKey: string,
-    private readonly base = process.env.HELIUS_API_BASE ?? "https://api.helius.xyz",
+    private readonly base = envUrl("HELIUS_API_BASE", "https://api.helius.xyz"),
   ) {}
 
   async fetchRows(address: string): Promise<{ rows: unknown[]; status: number; latencyMs: number }> {

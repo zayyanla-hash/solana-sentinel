@@ -366,6 +366,16 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
+  packages/intelligence-events:
+    dependencies:
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
   packages/market-data:
     dependencies:
       '@sat/shared':
@@ -607,6 +617,12 @@ importers:
         specifier: ^5.8.2
         version: 5.9.3
 
+  packages/validation-lab:
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
   packages/wallet-graph:
     dependencies:
       '@sat/shared':
@@ -624,6 +640,19 @@ importers:
         version: 5.9.3
 
   packages/wallet-intel:
+    dependencies:
+      '@sat/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.8.2
+        version: 5.9.3
+
+  packages/wallet-migration:
     dependencies:
       '@sat/shared':
         specifier: workspace:*

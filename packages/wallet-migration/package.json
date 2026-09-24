@@ -1,0 +1,18 @@
+{
+  "name": "@sat/wallet-migration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": { "types": "./src/index.ts", "import": "./src/index.ts", "default": "./src/index.ts" }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "test": "echo \"use root vitest\"",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": { "@sat/shared": "workspace:*", "zod": "^3.24.2" },
+  "devDependencies": { "typescript": "^5.8.2" }
+}

@@ -27,6 +27,36 @@ pnpm --filter @sat/web run build
 pnpm exec playwright test
 ```
 
+## Independent intelligence and validation modules
+
+This contributor branch adds three isolated, read-only research modules. They do not approve orders or alter the paper execution path.
+
+| Module | What it does | Scope |
+|---|---|---|
+| `@sat/wallet-migration` | Detects wallet SELL(A) → BUY(B) sequences and aggregates distinct wallets with exact transaction evidence | Observed wallet trades; synthetic tests |
+| `@sat/validation-lab` | Checks timestamp causality and evaluates supplied equity against baselines and cost assumptions | Research evaluation; no strategy optimization |
+| `@sat/intelligence-events` | Defines evidence-rich intelligence events and a bounded read-only query contract | In-memory demo adapter; no durable API yet |
+
+```mermaid
+flowchart LR
+  Trades[Observed wallet trades] --> Migration[Wallet migration]
+  Migration --> Events[Intelligence event contract]
+  Events --> Query[Read-only queries]
+  Equity[Supplied equity and trades] --> Validation[Independent validation lab]
+  Validation --> Results[Machine-readable research results]
+```
+
+Run the focused checks after `pnpm install`:
+
+```bash
+pnpm exec vitest run tests/wallet-migration.test.ts tests/validation-lab.test.ts tests/intelligence-events.test.ts tests/migration-intelligence.test.ts
+pnpm --filter @sat/wallet-migration run typecheck
+pnpm --filter @sat/validation-lab run typecheck
+pnpm --filter @sat/intelligence-events run typecheck
+```
+
+The modules use supplied observations and labeled fixtures. They do not establish profitable performance, production data quality, or revenue readiness. See [wallet migration](docs/WALLET-MIGRATION.md), [validation lab](docs/VALIDATION-LAB.md), [research methodology](docs/RESEARCH-METHODOLOGY.md), and [intelligence events](docs/INTELLIGENCE-EVENTS.md).
+
 ## Operating modes
 
 | Mode | Behavior |

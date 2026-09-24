@@ -1,0 +1,172 @@
+{
+  "dataStatus": "FIXTURE",
+  "note": "Synthetic flat NAV and benchmark. Demonstrates result shape only; no market or strategy performance claim.",
+  "result": {
+    "status": "OK",
+    "warnings": [
+      "Observational replay — not live profitability. Past segments do not predict OOS."
+    ],
+    "segments": {
+      "train": {
+        "label": "train",
+        "startIndex": 0,
+        "endIndex": 36,
+        "startTime": "2026-01-01T00:00:00.000Z",
+        "endTime": "2026-02-05T00:00:00.000Z",
+        "points": 36,
+        "spanMs": 3024000000
+      },
+      "validation": {
+        "label": "validation",
+        "startIndex": 36,
+        "endIndex": 48,
+        "startTime": "2026-02-06T00:00:00.000Z",
+        "endTime": "2026-02-17T00:00:00.000Z",
+        "points": 12,
+        "spanMs": 950400000
+      },
+      "oos": {
+        "label": "oos",
+        "startIndex": 48,
+        "endIndex": 60,
+        "startTime": "2026-02-18T00:00:00.000Z",
+        "endTime": "2026-03-01T00:00:00.000Z",
+        "points": 12,
+        "spanMs": 950400000
+      }
+    },
+    "metrics": {
+      "train": {
+        "points": 36,
+        "totalReturnPct": 0,
+        "maxDrawdownPct": 0,
+        "sharpe": null,
+        "sortino": null,
+        "volatilityPctAnn": null,
+        "positivePeriodRate": 0,
+        "tradeCount": 0,
+        "costDragUsd": 0,
+        "warnings": [
+          "Insufficient return observations for Sharpe",
+          "Insufficient downside observations for Sortino",
+          "Fewer than 10 trades in segment — trade-conditioned inference is unreliable"
+        ]
+      },
+      "validation": {
+        "points": 12,
+        "totalReturnPct": 0,
+        "maxDrawdownPct": 0,
+        "sharpe": null,
+        "sortino": null,
+        "volatilityPctAnn": null,
+        "positivePeriodRate": 0,
+        "tradeCount": 0,
+        "costDragUsd": 0,
+        "warnings": [
+          "Sample size < 30 — annualized Sharpe/Sortino/volatility suppressed as unreliable",
+          "Insufficient return observations for Sharpe",
+          "Insufficient downside observations for Sortino",
+          "Fewer than 10 trades in segment — trade-conditioned inference is unreliable"
+        ]
+      },
+      "oos": {
+        "points": 12,
+        "totalReturnPct": 0,
+        "maxDrawdownPct": 0,
+        "sharpe": null,
+        "sortino": null,
+        "volatilityPctAnn": null,
+        "positivePeriodRate": 0,
+        "tradeCount": 0,
+        "costDragUsd": 0,
+        "warnings": [
+          "Sample size < 30 — annualized Sharpe/Sortino/volatility suppressed as unreliable",
+          "Insufficient return observations for Sharpe",
+          "Insufficient downside observations for Sortino",
+          "Fewer than 10 trades in segment — trade-conditioned inference is unreliable"
+        ]
+      }
+    },
+    "benchmark": {
+      "benchmarkPoints": 12,
+      "strategyOosReturnPct": 0,
+      "benchmarkOosReturnPct": 0,
+      "excessReturnPct": 0,
+      "benchmarkMaxDrawdownPct": 0
+    },
+    "benchmarkOmittedReason": null,
+    "costSensitivity": null,
+    "costOmittedReason": "no OOS trades supplied — cost sensitivity omitted rather than modeled from nothing",
+    "latencySensitivity": null,
+    "latencyOmittedReason": "no OOS trades supplied — latency sensitivity omitted rather than modeled from nothing",
+    "walkForward": [
+      {
+        "fold": 0,
+        "trainEndIndex": 42,
+        "testStartIndex": 42,
+        "testEndIndex": 48,
+        "testReturnPct": 0
+      },
+      {
+        "fold": 1,
+        "trainEndIndex": 48,
+        "testStartIndex": 48,
+        "testEndIndex": 54,
+        "testReturnPct": 0
+      },
+      {
+        "fold": 2,
+        "trainEndIndex": 54,
+        "testStartIndex": 54,
+        "testEndIndex": 60,
+        "testReturnPct": 0
+      }
+    ],
+    "walkForwardOmittedReason": null,
+    "bootstrap": null,
+    "bootstrapOmittedReason": "bootstrap disabled (samples = 0)",
+    "provenance": {
+      "engineVersion": "validation-lab-v1",
+      "seed": 7,
+      "config": {
+        "split": {
+          "train": 0.6,
+          "validation": 0.2,
+          "oos": 0.2
+        },
+        "minTotalPoints": 30,
+        "minOosPoints": 10,
+        "periodsPerYear": 252,
+        "seed": 7,
+        "walkForwardFolds": 3,
+        "bootstrapSamples": 0,
+        "costScenarios": [
+          {
+            "label": "base",
+            "feeMultiplier": 1,
+            "extraSlippageBps": 0
+          },
+          {
+            "label": "fees-x2",
+            "feeMultiplier": 2,
+            "extraSlippageBps": 0
+          },
+          {
+            "label": "slip-50bps",
+            "feeMultiplier": 1,
+            "extraSlippageBps": 50
+          }
+        ],
+        "latencyStepsMs": [
+          0,
+          100,
+          500
+        ],
+        "latencyBpsPer100ms": 5
+      },
+      "inputDigest": "fnv1a-e7e59d31",
+      "dataSource": "SYNTHETIC_FLAT_NAV_FIXTURE",
+      "clockIso": "2026-03-01T00:00:00.000Z"
+    }
+  }
+}

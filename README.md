@@ -4,7 +4,7 @@
 
 **PAPER ONLY. LIVE OFF. `canBroadcast=false`.**
 
-Deterministic, agent-assisted Solana research and paper-trading terminal. Discovery, historical signals, Token-2022-aware token-risk v2, wallet credibility, smart-money signals, walk-forward backtests, policy and portfolio-risk gates, bounded LLM research, Jupiter Swap API V2 quote/route modeling (never `/execute`), simulated fills, versioned `/api/v1`, Postgres-ready persistence, and experiment analytics with provenance.
+Solana wallet monitoring and paper research with transaction evidence, durable PostgreSQL checkpoints, an internal alert inbox, token-risk analysis and simulated fills. Private production deployments default to monitor-only. Interpretation coverage and operating limits are documented with reproducible evidence.
 
 > Not investment advice. Not a fatwa authority. Risk tiers never use the label “SAFE”.
 >
@@ -19,6 +19,7 @@ pnpm --filter @sat/web run dev
 ```
 
 Open http://127.0.0.1:4317. Default bind is loopback. Demo data is labeled in the banner.
+Demo initialization is an explicit dashboard action. Production requires operator authentication.
 
 ```bash
 pnpm exec vitest run
@@ -57,7 +58,26 @@ pnpm --filter @sat/intelligence-events run typecheck
 
 The modules use supplied observations and labeled fixtures. They do not establish profitable performance, production data quality, or revenue readiness. See [wallet migration](docs/WALLET-MIGRATION.md), [validation lab](docs/VALIDATION-LAB.md), [research methodology](docs/RESEARCH-METHODOLOGY.md), and [intelligence events](docs/INTELLIGENCE-EVENTS.md).
 
-## Reliability checkpoint — September 30, 2026
+## Private staging checkpoint — September 30, 2026
+
+Local validation passed **354 tests with the PostgreSQL suites enabled**, typecheck, lint, production build and the basic secret scan. The worker commits raw observations, trade effects, alert intents and cursor progress atomically. Restart and conflict tests run against an isolated PostgreSQL database; durable alert cooldowns and event IDs suppress replay duplicates.
+
+The reviewed public-mainnet corpus contains **13 finalized transactions**: one narrowly supported Jupiter/Pump sale, eight successful ambiguous cases retained as `UNKNOWN`, and four failed transactions retained as `FAILED`. The sale fixture was used to improve the interpreter, so this is regression evidence with one directional case, not a holdout accuracy estimate. Two separate short mainnet runs were bounded to five and three minutes; no long-duration availability claim is established.
+
+See the [staging runbook](docs/STAGING.md) and [engineering report](artifacts/session-2/REPORT.md). After PostgreSQL is installed:
+
+```sh
+pnpm staging:start
+# Configure public wallet addresses in the private .env.staging.local file.
+pnpm build
+pnpm staging:validate
+pnpm staging:monitor # separate terminal
+pnpm staging:web     # separate terminal
+```
+
+Monitoring covers transactions mentioning the tracked address in account keys, starting from a bounded recent history window. Unsupported protocols and complex actions abstain. External alert delivery, multi-tenant isolation and automatic historical reclassification are not implemented.
+
+## Historical reliability checkpoint — September 30, 2026
 
 This branch adds bounded Helius history requests/pagination, conservative parsing, opt-in durable wallet-history snapshots, and atomic checks for concurrent paper fills and marks. Local validation passed 273 tests; two Postgres tests require an explicitly configured disposable `SENTINEL_TEST_DATABASE_URL` and were skipped. No real-mainnet classification accuracy or stream reconnect evidence is claimed.
 
@@ -66,7 +86,7 @@ pnpm validate
 pnpm benchmark:ingestion --events=5000 --runs=5
 ```
 
-Set `SAT_HISTORY_DIR=./runtime-history` to enable the single-writer local archive for keyed history reads. A hard kill can leave an orphan writer lock that needs manual recovery after confirming the old process is dead. `tradeHighWater` records classified trades; it does not prove gap-free Solana history. The Helius stream adapter remains unavailable, and the worker runs one batch pass.
+Set `SAT_HISTORY_DIR=./runtime-history` to enable the original single-writer local archive for keyed history reads. A hard kill can leave an orphan writer lock that needs manual recovery after confirming the old process is dead. `tradeHighWater` records classified trades; it does not prove gap-free Solana history. The Helius stream adapter remains unavailable. The original research worker runs one batch pass; `pnpm monitor` now provides a separate continuous PostgreSQL-backed polling path.
 
 See [the Session 1 report](artifacts/session-1/REPORT.md) for exact validation, synthetic measurements, failure tests, and remaining P0/P1 work. Live broadcast remains disabled.
 

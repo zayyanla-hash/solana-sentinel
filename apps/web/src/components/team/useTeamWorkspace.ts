@@ -186,12 +186,15 @@ export function useTeamWorkspace() {
     setPending("signout");
     try {
       await teamAction("logout", {});
-    } catch {
-      // The server may already have ended the session; clear locally either way.
+      endSession("signedOut");
+    } catch (error) {
+      // A 401 means the server already ended the session. Anything else leaves the session cookie valid,
+      // so keep the workspace and say so rather than appearing signed out.
+      if (error instanceof HttpError && error.status === 401) endSession("signedOut");
+      else setNotice({ tone: "error", text: `Sign out did not complete: ${messageOf(error)} Try again.` });
     } finally {
       pendingRef.current = null;
       setPending(null);
-      endSession("signedOut");
     }
   }, [endSession]);
 

@@ -28,7 +28,9 @@ No API route, guard, package, worker, migration, script, manifest or `globals.cs
   authoritative and its `DEDICATED_HTTPS_RPC_REQUIRED` error is mapped to a sentence (tested with the mainnet-beta URL).
 - The username `pattern` attribute is written `[a-z0-9][a-z0-9_\-]{1,39}`: the original unescaped form is an invalid
   regular expression under the browser's `v` flag and was silently ignored.
-- Sign out is never blocked by an in-flight action (found during QA: it was silently ignored mid-action).
+- Sign out is never blocked by an in-flight action (found during QA: it was silently ignored mid-action). If the
+  logout request fails for any reason other than an already-ended session (401), the workspace stays signed in and
+  shows an error, because the session cookie is still valid.
 - No new dependency; "[designer v]" in the header is a plain label (no menu).
 
 ## Scenarios (live stack: staging Postgres, `next dev` on 127.0.0.1:4319, providers unconfigured)

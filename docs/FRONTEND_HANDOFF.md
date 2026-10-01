@@ -6,7 +6,64 @@ Implement a polished frontend for the existing shared wallet-monitoring app. Thi
 
 Repository: https://github.com/zayyanla-hash/solana-sentinel.git
 
-The implementation checkout is `/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening`. Use a separate branch/worktree from the checkpoint supplied with this handoff. Do not modify the active checkout or its running service snapshots. The backend/release work is continuing concurrently.
+The source branch is `release/shared-mac-20261001`, with backend checkpoint `ceb1099` and draft PR https://github.com/zayyanla-hash/solana-sentinel/pull/1. Clone this branch on your own computer; `main` does not yet contain the shared release. No files from the host Mac are needed. Repository access is required if GitHub prompts for authentication.
+
+```sh
+git clone --branch release/shared-mac-20261001 https://github.com/zayyanla-hash/solana-sentinel.git
+cd solana-sentinel
+git switch -c frontend/opus-shared-dashboard
+```
+
+The backend/release work continues concurrently on the release branch. Keep frontend commits on your own branch, and target a frontend PR at `release/shared-mac-20261001`. Do not push frontend changes directly to the release branch or merge/deploy automatically. Fetch and incorporate later backend changes deliberately; never overwrite either history.
+
+## Development setup on another computer
+
+Use Node 22 LTS, Python 3, pnpm 10.33.3 and PostgreSQL 17 binaries. On macOS with Homebrew, install PostgreSQL with `brew install postgresql@17`, then set `SENTINEL_PG_BIN="$(brew --prefix postgresql@17)/bin"` with `export`. On other systems set that variable to your installed PostgreSQL binary directory. The development script starts its own database on loopback port 55432; do not start a second global PostgreSQL service on that port.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm staging:start
+pnpm -r --filter='./packages/*' run build
+```
+
+Create a private frontend configuration from the generated local staging configuration. Run this once in your fresh clone. It intentionally leaves provider integrations unconfigured, so no paid RPC, Telegram bot, Tailscale enrollment or host credentials are needed to improve the interface.
+
+```sh
+python3 - <<'PYCONFIG'
+from pathlib import Path
+import secrets
+source = dict(line.split('=', 1) for line in Path('.env.staging.local').read_text().splitlines() if '=' in line)
+source.update({
+    'SENTINEL_TEAM_MODE': 'true',
+    'SENTINEL_MONITOR_ONLY': 'true',
+    'SAT_PUBLIC_ORIGIN': 'http://127.0.0.1:4319',
+    'SAT_ALLOWED_ORIGINS': 'http://127.0.0.1:4319',
+    'SAT_CONFIG_KEY': secrets.token_hex(32),
+    'PUBLIC_DEMO': 'false',
+    'DEMO_MODE': 'false',
+    'SOLANA_RPC_URL': '',
+    'SENTINEL_MONITOR_WALLETS': '',
+})
+with Path('.env.frontend.local').open('x', opener=lambda path, flags: __import__('os').open(path, flags, 0o600)) as output:
+    output.write('\n'.join(f'{key}={value}' for key, value in source.items()) + '\n')
+PYCONFIG
+node --env-file=.env.frontend.local --import tsx scripts/team-admin.ts add designer --generate "$PWD/runtime-history/designer-credential"
+node --env-file=.env.frontend.local --import tsx scripts/team-admin.ts add reviewer --generate "$PWD/runtime-history/reviewer-credential"
+node --env-file=.env.frontend.local apps/web/node_modules/next/dist/bin/next dev apps/web -H 127.0.0.1 -p 4319
+```
+
+Open `http://127.0.0.1:4319` and sign in with `designer` or `reviewer`, using the corresponding private credential file. Use ego-lite for all browser work. Do not paste credentials into chat, screenshots, commits or logs. The ignored `.env.frontend.local` and `runtime-history/` files belong only to this development clone. A missing worker or provider should appear unavailable; that is an expected development state. Populated delivery and activity views require explicitly labeled development fixtures or separate test integrations; never fabricate live results. Stop the web process before `pnpm staging:stop` when finished.
+
+For verification:
+
+```sh
+pnpm --filter @sat/web typecheck
+pnpm --filter @sat/web lint
+pnpm build
+pnpm test:e2e
+```
+
+A fresh clone needs Playwright's Chromium installed for the automated end-to-end suite (`pnpm exec playwright install chromium`). Manual browser work still uses ego-lite. Include any failed or unrun checks in the handoff.
 
 Own `apps/web/src/app/TeamDashboard.tsx` and new components/styles dedicated to that dashboard. You may improve its metadata in `apps/web/src/app/layout.tsx`, but coordinate before editing shared global styles. Keep the separate `ResearchDashboard.tsx` behavior intact. Do not edit API routes, request guards, database packages, parser, worker, delivery system, migrations, release scripts, or dependency manifests without identifying a concrete blocker first.
 

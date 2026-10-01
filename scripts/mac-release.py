@@ -16,6 +16,7 @@ import re
 import secrets
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -106,6 +107,21 @@ def ready() -> bool:
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
     except RuntimeError:
         return False
+
+
+def port_open(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.3)
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
+def wait_services_stopped(seconds: int = 30) -> None:
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        if not port_open(PORT_DB) and not port_open(PORT_WEB):
+            return
+        time.sleep(0.2)
+    raise RuntimeError("Previous web or database process still holds its loopback port.")
 
 
 def wait_ready(seconds: int = 45) -> None:
@@ -267,7 +283,7 @@ def create_plist(which: str, checkout: Path) -> None:
     entries = {"Label": label(which), "ProgramArguments": [sys.executable, str(checkout / "scripts/mac-release.py"),
                "service", which, "--checkout", str(checkout)], "RunAtLoad": which != "backup",
                "WorkingDirectory": str(checkout), "StandardOutPath": "/dev/null", "StandardErrorPath": "/dev/null",
-               "EnvironmentVariables": environment}
+               "EnvironmentVariables": environment, "ExitTimeOut": 30}
     if which == "backup":
         entries["StartCalendarInterval"] = {"Hour": 3, "Minute": 15}
     else:
@@ -346,6 +362,7 @@ def activate(checkout: Path, previous: str | None) -> None:
     for which in ("backup", "worker", "web", "postgres"):
         if plist_path(which).exists():
             launch(which, "bootout")
+    wait_services_stopped()
     try:
         for which in ("postgres", "web", "worker", "backup"):
             create_plist(which, checkout)
@@ -366,6 +383,7 @@ def stop() -> None:
     for which in ("backup", "worker", "web", "postgres"):
         if plist_path(which).exists():
             launch(which, "bootout")
+    wait_services_stopped()
     print("Shared Mac services stopped.")
 
 
@@ -515,6 +533,34 @@ def rotate_log(path: Path, *, force: bool = False) -> None:
             os.replace(source, target)
 
 
+def shutdown_child(process: subprocess.Popen, which: str, timeout: float = 10) -> None:
+    """Stop the exact spawned process group before launchd's exit deadline."""
+    if process.poll() is not None:
+        return
+    owns_group = False
+    try:
+        owns_group = os.getpgid(process.pid) == process.pid
+        sig = signal.SIGINT if which == "postgres" else signal.SIGTERM
+        if owns_group:
+            os.killpg(process.pid, sig)
+        else:
+            process.send_signal(sig)
+    except ProcessLookupError:
+        return
+    try:
+        process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if process.poll() is None:
+            try:
+                if owns_group and os.getpgid(process.pid) == process.pid:
+                    os.killpg(process.pid, signal.SIGKILL)
+                else:
+                    process.kill()
+            except ProcessLookupError:
+                pass
+        process.wait(timeout=2)
+
+
 def service(which: str, checkout: Path) -> None:
     private_dir(BASE / "logs")
     log = BASE / "logs" / f"{which}.log"
@@ -530,9 +576,13 @@ def service(which: str, checkout: Path) -> None:
         raise
     process = subprocess.Popen(argv, cwd=checkout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                env=os.environ.copy(), start_new_session=True)
+    stopping = False
     def relay(sig, _frame):
-        if process.poll() is None:
-            os.killpg(process.pid, sig)
+        nonlocal stopping
+        if stopping or process.poll() is not None:
+            return
+        stopping = True
+        shutdown_child(process, which)
     signal.signal(signal.SIGTERM, relay)
     signal.signal(signal.SIGINT, relay)
     stream = log.open("ab", buffering=0)

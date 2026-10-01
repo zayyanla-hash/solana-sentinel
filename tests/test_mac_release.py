@@ -6,7 +6,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
+import time
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -72,6 +74,7 @@ class MacReleaseTest(unittest.TestCase):
         self.assertNotIn("DATABASE_URL", web.read_text())
         self.assertIn("<key>LC_ALL</key><string>C</string>", web.read_text())
         self.assertIn("<key>SENTINEL_NODE_BIN</key>", web.read_text())
+        self.assertIn("<key>ExitTimeOut</key><integer>30</integer>", web.read_text())
         node = mac.node_path()
         prior_path, prior_node = os.environ.get("PATH"), os.environ.get("SENTINEL_NODE_BIN")
         try:
@@ -111,6 +114,57 @@ class MacReleaseTest(unittest.TestCase):
             self.assertFalse((copied / "runtime-history").exists())
         finally:
             shutil.rmtree(source, ignore_errors=True)
+
+    def test_child_shutdown_uses_fast_database_signal_and_bounds_exit(self):
+        mac = self.module
+        code = """import signal, sys, time
+from pathlib import Path
+def handle(sig, frame):
+    Path(sys.argv[1]).write_text(signal.Signals(sig).name)
+    raise SystemExit(0)
+signal.signal(signal.SIGINT, handle)
+signal.signal(signal.SIGTERM, handle)
+Path(sys.argv[1] + '.ready').touch()
+while True: time.sleep(0.1)
+"""
+        for service, expected in (("postgres", "SIGINT"), ("web", "SIGTERM")):
+            marker = Path(self.temp.name) / service
+            process = subprocess.Popen([sys.executable, "-c", code, str(marker)],
+                                       start_new_session=True, stdout=subprocess.DEVNULL)
+            try:
+                for _ in range(100):
+                    if marker.with_name(marker.name + ".ready").exists(): break
+                    time.sleep(0.02)
+                self.assertTrue(marker.with_name(marker.name + ".ready").exists())
+                mac.shutdown_child(process, service, timeout=1)
+                self.assertEqual(marker.read_text(), expected)
+                self.assertIsNotNone(process.poll())
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=2)
+
+    def test_child_shutdown_kills_unresponsive_owned_group(self):
+        marker = Path(self.temp.name) / "hung.ready"
+        code = """import signal, sys, time
+from pathlib import Path
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+Path(sys.argv[1]).touch()
+while True: time.sleep(0.1)
+"""
+        process = subprocess.Popen([sys.executable, "-c", code, str(marker)],
+                                   start_new_session=True, stdout=subprocess.DEVNULL)
+        try:
+            for _ in range(100):
+                if marker.exists(): break
+                time.sleep(0.02)
+            self.assertTrue(marker.exists())
+            self.module.shutdown_child(process, "worker", timeout=0.2)
+            self.assertEqual(process.returncode, -9)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=2)
 
 
 if __name__ == "__main__":

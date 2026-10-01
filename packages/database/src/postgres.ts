@@ -1,4 +1,5 @@
 import pg from "pg";
+import { isDeepStrictEqual } from "node:util";
 import {
   type CandidateAsset,
   type PaperOrder,
@@ -31,8 +32,8 @@ import {
 import type { ExperimentResult } from "@sat/experiments";
 import { createInitialPortfolio } from "@sat/portfolio";
 import { STORE_SCHEMA_SQL, STORE_SCHEMA_VERSION } from "./schema-sql";
-import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork } from "./types";
-import { AlreadyExecutedError } from "./types";
+import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork, MarkUnitOfWork } from "./types";
+import { AlreadyExecutedError, StalePortfolioError } from "./types";
 import { newId } from "@sat/shared";
 
 const { Pool } = pg;
@@ -404,6 +405,25 @@ export class PostgresDatabase implements Database {
           throw new AlreadyExecutedError();
         }
       }
+      // Serialize all portfolio writers on the singleton row, then reject fills
+      // calculated from a state that another proposal or mark has changed.
+      const currentPortfolio = await client.query(
+        "select payload from sat_portfolio where id = 1 for update",
+      );
+      const currentPositions = await client.query(
+        "select payload from sat_positions order by id",
+      );
+      const sorted = (positions: Position[]) => [...positions].sort((a, b) => a.id.localeCompare(b.id));
+      if (
+        !work.expectedPortfolio || !work.expectedPositions ||
+        !isDeepStrictEqual(currentPortfolio.rows[0]?.payload, work.expectedPortfolio) ||
+        !isDeepStrictEqual(
+          currentPositions.rows.map((row) => row.payload),
+          sorted(work.expectedPositions),
+        )
+      ) {
+        throw new StalePortfolioError();
+      }
       await client.query(
         `insert into sat_orders (id, mint, payload, created_at, proposal_id)
          values ($1, $2, $3::jsonb, $4, $5)
@@ -435,6 +455,48 @@ export class PostgresDatabase implements Database {
         );
       }
       await client.query("insert into sat_equity (t, nav) values (now(), $1)", [work.navUsd]);
+      await client.query("commit");
+    } catch (err) {
+      await client.query("rollback");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async recordMarkToMarket(work: MarkUnitOfWork): Promise<void> {
+    await this.ensure();
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      const currentPortfolio = await client.query(
+        "select payload from sat_portfolio where id = 1 for update",
+      );
+      const currentPositions = await client.query(
+        "select payload from sat_positions order by id",
+      );
+      const sorted = (positions: Position[]) => [...positions].sort((a, b) => a.id.localeCompare(b.id));
+      if (
+        !isDeepStrictEqual(currentPortfolio.rows[0]?.payload, work.expectedPortfolio) ||
+        !isDeepStrictEqual(currentPositions.rows.map((row) => row.payload), sorted(work.expectedPositions))
+      ) {
+        throw new StalePortfolioError();
+      }
+      await client.query("delete from sat_positions");
+      for (const row of work.positions) {
+        await client.query(
+          "insert into sat_positions (id, mint, payload, updated_at) values ($1, $2, $3::jsonb, $4)",
+          [row.id, row.mint, row, row.updatedAt],
+        );
+      }
+      await client.query(
+        "update sat_portfolio set payload = $1::jsonb where id = 1",
+        [work.snapshot],
+      );
+      await client.query(
+        "insert into sat_equity (t, nav) values ($1, $2)",
+        [work.snapshot.timestamp, work.navUsd],
+      );
       await client.query("commit");
     } catch (err) {
       await client.query("rollback");

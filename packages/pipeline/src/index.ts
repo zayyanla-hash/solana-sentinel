@@ -395,6 +395,8 @@ export async function executePaperProposal(
       proposalId,
       proposal: accepted,
       order,
+      expectedPortfolio: state.portfolio,
+      expectedPositions: state.positions,
       snapshot: applied.snapshot,
       positions: applied.positions,
       events: [...events, ...applied.events],
@@ -421,9 +423,13 @@ export async function markToMarket(db: Database = getDatabase()) {
     if (asset?.priceUsd != null) marks[p.mint] = asset.priceUsd;
   }
   const marked = markPositions(state.positions, marks, state.portfolio);
-  await db.setPositions(marked.positions);
-  await db.setPortfolio(marked.snapshot);
-  await db.pushEquity(marked.snapshot.navUsd);
+  await db.recordMarkToMarket({
+    expectedPortfolio: state.portfolio,
+    expectedPositions: state.positions,
+    positions: marked.positions,
+    snapshot: marked.snapshot,
+    navUsd: marked.snapshot.navUsd,
+  });
   return marked.snapshot;
 }
 

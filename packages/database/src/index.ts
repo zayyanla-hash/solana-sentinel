@@ -18,11 +18,12 @@ import {
 } from "@sat/shared";
 import type { ExperimentResult } from "@sat/experiments";
 import { createInitialPortfolio } from "@sat/portfolio";
-import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork } from "./types";
-import { AlreadyExecutedError } from "./types";
+import { isDeepStrictEqual } from "node:util";
+import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork, MarkUnitOfWork } from "./types";
+import { AlreadyExecutedError, StalePortfolioError } from "./types";
 import { PostgresDatabase } from "./postgres";
 
-export type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork };
+export type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork, MarkUnitOfWork };
 
 export class InMemoryDatabase implements Database {
   readonly mode = "memory" as const;
@@ -105,6 +106,16 @@ export class InMemoryDatabase implements Database {
         if (!current || current.status !== "PROPOSED") {
           throw new AlreadyExecutedError();
         }
+      }
+      const sorted = (positions: Position[]) => [...positions].sort((a, b) => a.id.localeCompare(b.id));
+      if (
+        !work.expectedPortfolio || !work.expectedPositions ||
+        !isDeepStrictEqual(this.state.portfolio, work.expectedPortfolio) ||
+        !isDeepStrictEqual(sorted(this.state.positions), sorted(work.expectedPositions))
+      ) {
+        throw new StalePortfolioError();
+      }
+      if (work.consumeProposal) {
         this.state.proposals = [
           work.proposal,
           ...this.state.proposals.filter((x) => x.id !== work.proposalId),
@@ -115,6 +126,20 @@ export class InMemoryDatabase implements Database {
       this.state.positions = work.positions;
       this.state.events.unshift(...work.events);
       this.state.equityHistory.push({ t: new Date().toISOString(), nav: work.navUsd });
+    });
+  }
+  async recordMarkToMarket(work: MarkUnitOfWork): Promise<void> {
+    return this.enqueue(() => {
+      const sorted = (positions: Position[]) => [...positions].sort((a, b) => a.id.localeCompare(b.id));
+      if (
+        !isDeepStrictEqual(this.state.portfolio, work.expectedPortfolio) ||
+        !isDeepStrictEqual(sorted(this.state.positions), sorted(work.expectedPositions))
+      ) {
+        throw new StalePortfolioError();
+      }
+      this.state.positions = work.positions;
+      this.state.portfolio = work.snapshot;
+      this.state.equityHistory.push({ t: work.snapshot.timestamp, nav: work.navUsd });
     });
   }
   async reset(startingCapital: number) {
@@ -193,6 +218,8 @@ export async function closeDatabaseForTests(): Promise<void> {
   singleton = null;
 }
 
+export const closeDatabase = closeDatabaseForTests;
+
 export { PostgresDatabase, buildPoolConfig } from "./postgres";
-export { AlreadyExecutedError };
+export { AlreadyExecutedError, StalePortfolioError };
 export { STORE_SCHEMA_SQL, STORE_SCHEMA_VERSION } from "./schema-sql";

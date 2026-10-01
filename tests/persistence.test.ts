@@ -56,9 +56,7 @@ describe("DAS mint_extensions mapping", () => {
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
       const body = String(init?.body ?? "");
       if (body.includes("getAsset")) {
-        return {
-          ok: true,
-          json: async () => ({
+        return new Response(JSON.stringify({
             result: {
               token_info: {
                 token_program: "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
@@ -72,24 +70,17 @@ describe("DAS mint_extensions mapping", () => {
               authorities: [{ type: "mint", address: "should-not-drive-mapping" }],
               content: { metadata: { name: "Ext", symbol: "EXT" } },
             },
-          }),
-        } as Response;
+          }), { headers: { "content-type": "application/json" } });
       }
       if (body.includes("getTokenLargestAccounts")) {
-        return {
-          ok: true,
-          json: async () => ({
+        return new Response(JSON.stringify({
             result: { value: [{ amount: "800" }, { amount: "100" }] },
-          }),
-        } as Response;
+          }), { headers: { "content-type": "application/json" } });
       }
       if (body.includes("getTokenSupply")) {
-        return {
-          ok: true,
-          json: async () => ({
+        return new Response(JSON.stringify({
             result: { value: { amount: "1000", decimals: 0, uiAmountString: "1000" } },
-          }),
-        } as Response;
+          }), { headers: { "content-type": "application/json" } });
       }
       throw new Error(`unexpected ${body}`);
     }) as typeof fetch;
@@ -186,23 +177,13 @@ describe("InMemoryDatabase", () => {
   });
 });
 
-const PG_URL =
-  process.env.DATABASE_URL?.trim() ||
-  "postgres://sat:sat@127.0.0.1:5432/sat_test";
+// Never reset the application's DATABASE_URL. Opt in with a disposable test database.
+const PG_URL = process.env.SENTINEL_TEST_DATABASE_URL?.trim();
 
-describe("PostgresDatabase", () => {
-  let available = false;
-
+describe.skipIf(!PG_URL)("PostgresDatabase", () => {
   beforeEach(async () => {
-    try {
-      const db = new PostgresDatabase(PG_URL, 25_000);
-      await db.reset(25_000);
-      await db.close();
-      available = true;
-    } catch (err) {
-      available = false;
-      console.warn("Postgres not reachable", err instanceof Error ? err.message : err);
-    }
+    const db = new PostgresDatabase(PG_URL!, 25_000);
+    try { await db.reset(25_000); } finally { await db.close(); }
   });
 
   afterAll(async () => {
@@ -210,11 +191,7 @@ describe("PostgresDatabase", () => {
   });
 
   it("write/read, upsert, duplicate proposal protection, restart/restore", async () => {
-    if (!available) {
-      console.warn("Postgres not reachable — adapter implemented but this environment did not complete a PG round-trip");
-      return;
-    }
-    const db = new PostgresDatabase(PG_URL, 25_000);
+    const db = new PostgresDatabase(PG_URL!, 25_000);
     const c = sampleCandidate();
     await db.setCandidates([c]);
     await db.addSignals(c.mint, [
@@ -298,7 +275,7 @@ describe("PostgresDatabase", () => {
     expect(first.signals.length).toBeGreaterThan(0);
     await db.close();
 
-    const restored = new PostgresDatabase(PG_URL, 25_000);
+    const restored = new PostgresDatabase(PG_URL!, 25_000);
     const second = await restored.getState();
     expect(second.candidates[0]?.symbol).toBe("JUP");
     expect(second.proposals[0]?.id).toBe(proposalId);
@@ -308,8 +285,7 @@ describe("PostgresDatabase", () => {
   });
 
   it("atomic consume: second fill of same proposal is rejected", async () => {
-    if (!available) return;
-    const db = new PostgresDatabase(PG_URL, 25_000);
+    const db = new PostgresDatabase(PG_URL!, 25_000);
     await db.reset(25_000);
     const c = sampleCandidate();
     const proposalId = "44444444-4444-4444-8444-444444444444";
@@ -403,6 +379,8 @@ describe("PostgresDatabase", () => {
       proposalId,
       proposal: { ...p, status: "ACCEPTED_PAPER" },
       order: mkOrder("55555555-5555-4555-8555-555555555555"),
+      expectedPortfolio: snap.portfolio,
+      expectedPositions: snap.positions,
       snapshot: snap.portfolio,
       positions: [],
       events: [],
@@ -414,7 +392,9 @@ describe("PostgresDatabase", () => {
         proposalId,
         proposal: { ...p, status: "ACCEPTED_PAPER" },
         order: mkOrder("66666666-6666-4666-8666-666666666666"),
-        snapshot: snap.portfolio,
+        expectedPortfolio: snap.portfolio,
+      expectedPositions: snap.positions,
+      snapshot: snap.portfolio,
         positions: [],
         events: [],
         navUsd: snap.portfolio.navUsd,

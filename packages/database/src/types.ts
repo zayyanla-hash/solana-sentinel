@@ -26,6 +26,9 @@ export interface FillUnitOfWork {
   proposalId: string;
   proposal: TradeProposal;
   order: PaperOrder;
+  /** State used to calculate the fill. Required for every atomic fill. */
+  expectedPortfolio: PortfolioSnapshot;
+  expectedPositions: Position[];
   snapshot: PortfolioSnapshot;
   positions: Position[];
   events: SystemEvent[];
@@ -33,10 +36,25 @@ export interface FillUnitOfWork {
   consumeProposal: boolean;
 }
 
+export interface MarkUnitOfWork {
+  expectedPortfolio: PortfolioSnapshot;
+  expectedPositions: Position[];
+  snapshot: PortfolioSnapshot;
+  positions: Position[];
+  navUsd: number;
+}
+
 export class AlreadyExecutedError extends Error {
   constructor(message = "Proposal already paper-executed") {
     super(message);
     this.name = "AlreadyExecutedError";
+  }
+}
+
+export class StalePortfolioError extends Error {
+  constructor(message = "Portfolio changed before state update; re-evaluate and retry explicitly") {
+    super(message);
+    this.name = "StalePortfolioError";
   }
 }
 
@@ -80,6 +98,7 @@ export interface Database {
   addSignals(mint: string, signals: SignalResult[]): Promise<void>;
   pushEquity(nav: number): Promise<void>;
   consumeProposalAndRecordFill(work: FillUnitOfWork): Promise<void>;
+  recordMarkToMarket(work: MarkUnitOfWork): Promise<void>;
   reset(startingCapital: number): Promise<void>;
   setWatchlist(items: WatchlistItem[]): Promise<void>;
   setWalletScores(scores: WalletCredibilityScore[]): Promise<void>;

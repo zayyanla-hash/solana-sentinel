@@ -238,3 +238,47 @@ does not alter the research dashboard’s behavior (it is purely a meta tag — 
 - Screenshots: real stack for empty / unconfigured / signed-out / expired / error states. Populated
   activity/inbox/delivery views may use Playwright `page.route` fixtures **only inside the screenshot script (not
   the app)**, and every such screenshot file name and caption must contain `FIXTURE`.
+
+## 11. Visual direction v2
+
+A second pass changed presentation only. The data and session layer (`useTeamWorkspace`, request paths and payloads,
+status presenters, evidence rules) is unchanged. Sections 5 and 6 above describe the first layout; where they differ,
+this section wins.
+
+**Tokens** (scoped to the team root in `team.module.css`, nothing global):
+ground `#0E0C09`, surface `#18150F`, hairlines `#221E17` / `#3A342A`, ink `#F4F1EA`, muted `#A39C8E`, neon `#CCFF00`,
+go `#00C805`, caution `#FFB01F`, stop `#FF5000`, neutral pill `#2B261E`. Fonts: Geist and Geist Mono are loaded with
+`next/font/google` in `fonts.ts` and applied by className on the team root; `layout.tsx` is untouched. Source Serif 4
+(already exposed as `--font-serif`) is used only for editorial headlines (sign-in, setup step titles). Numbers are
+tabular everywhere.
+
+**Rules**
+- Neon is the single primary action of a view (Add wallet, or Watch wallet while the add form is open; Create buy
+  alert on a wallet; the current setup step's submit; Sign in). Never decoration, never two at once.
+- Filled pills are state (word on a color). Outline pills are tags. Unknown server values render as a neutral pill with
+  the raw value. Status is never color alone.
+- Sections are separated by hairlines. Only sidebars and panels get a border.
+- No USD, prices or performance anywhere. Quantities only.
+- CSS Modules are unlayered and beat Tailwind utilities, so utilities that collide with a module property use `!`.
+
+**Shell.** Top bar (mark, Sentinel, Home / Wallets / Alerts / Setup as `aria-current` buttons, wallet search, account
+menu with Sign out). Below 768 px: compact header and a fixed bottom tab bar. Views are client-side state; nothing is
+written to the URL. Wallet detail lives under Wallets.
+
+**Chart semantics.** One hand-written SVG. The line is the cumulative count of observations in the bounded recent
+window (one step per observation). x is block time when every point has one, otherwise slot (slot order, proportional).
+A green dot marks a classified BUY, an orange dot a classified SELL, a diamond on the baseline a FAILED transaction.
+Unclassified steps are deliberately unmarked (the legend says so): unclassified is the parser abstaining, never proof
+of no trade. Filters (All / Buys / Sells, plus Unclassified on a wallet) change markers, not the line. Hover, touch or
+arrow keys scrub with a rule and tooltip; the same text is announced in a live region. Activity is fetched per wallet
+with a per-request ticket, on the normal 15 s cycle, only while Home or a wallet is visible.
+
+**Derived, never invented.** The hero ("n of N wallets current": CURRENT coverage, polled within 120 s, no error), the
+Needs attention cards, the System rows and every statistic come from `/api/monitor`, `/api/team/status`,
+`/api/state` and `/api/team/activity`. Absent values render as an em dash. The pure derivations live in `derive.ts`,
+`chart.ts` and `rules.ts` and are unit tested.
+
+**Wallet-scoped alerts.** `alert_create` cannot carry a wallet, so the wallet view creates the rule and then patches
+`{ name, wallet, mint, cooldownMinutes }`. If the patch fails the new rule is deleted immediately and the error is
+shown, so an unfiltered rule that would fire for every wallet is never left behind. If the delete also fails the
+message says so and names the rule.

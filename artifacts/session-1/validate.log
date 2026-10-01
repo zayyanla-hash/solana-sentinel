@@ -1,0 +1,221 @@
+
+> solana-sentinel@0.3.0 validate /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm secret-scan
+
+
+> solana-sentinel@0.3.0 typecheck /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> pnpm -r run typecheck
+
+Scope: 30 of 31 workspace projects
+packages/intelligence-events typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared typecheck$ tsc -p tsconfig.json --noEmit
+packages/validation-lab typecheck$ tsc -p tsconfig.json --noEmit
+packages/intelligence-events typecheck: Done
+packages/validation-lab typecheck: Done
+packages/shared typecheck: Done
+packages/analytics typecheck$ tsc -p tsconfig.json --noEmit
+packages/alerts typecheck$ tsc -p tsconfig.json --noEmit
+packages/entitlements typecheck$ tsc -p tsconfig.json --noEmit
+packages/execution typecheck$ tsc -p tsconfig.json --noEmit
+packages/analytics typecheck: Done
+packages/market-data typecheck$ tsc -p tsconfig.json --noEmit
+packages/entitlements typecheck: Done
+packages/observability typecheck$ tsc -p tsconfig.json --noEmit
+packages/alerts typecheck: Done
+packages/policy-engine typecheck$ tsc -p tsconfig.json --noEmit
+packages/execution typecheck: Done
+packages/portfolio typecheck$ tsc -p tsconfig.json --noEmit
+packages/policy-engine typecheck: Done
+packages/research-agent typecheck$ tsc -p tsconfig.json --noEmit
+packages/portfolio typecheck: Done
+packages/risk-engine typecheck$ tsc -p tsconfig.json --noEmit
+packages/market-data typecheck: Done
+packages/observability typecheck: Done
+packages/signals typecheck$ tsc -p tsconfig.json --noEmit
+packages/streaming typecheck$ tsc -p tsconfig.json --noEmit
+packages/research-agent typecheck: Done
+packages/token-risk typecheck$ tsc -p tsconfig.json --noEmit
+packages/streaming typecheck: Done
+packages/wallet-intel typecheck$ tsc -p tsconfig.json --noEmit
+packages/risk-engine typecheck: Done
+packages/wallet-migration typecheck$ tsc -p tsconfig.json --noEmit
+packages/signals typecheck: Done
+packages/x402 typecheck$ tsc -p tsconfig.json --noEmit
+packages/wallet-intel typecheck: Done
+packages/x402 typecheck: Done
+packages/token-risk typecheck: Done
+packages/wallet-migration typecheck: Done
+packages/wallet-graph typecheck$ tsc -p tsconfig.json --noEmit
+packages/solana typecheck$ tsc -p tsconfig.json --noEmit
+packages/discovery typecheck$ tsc -p tsconfig.json --noEmit
+packages/paper-trading typecheck$ tsc -p tsconfig.json --noEmit
+packages/discovery typecheck: Done
+packages/paper-trading typecheck: Done
+packages/wallet-graph typecheck: Done
+packages/solana typecheck: Done
+packages/backtest typecheck$ tsc -p tsconfig.json --noEmit
+packages/experiments typecheck$ tsc -p tsconfig.json --noEmit
+packages/experiments typecheck: Done
+packages/backtest typecheck: Done
+packages/database typecheck$ tsc -p tsconfig.json --noEmit
+packages/database typecheck: Done
+packages/pipeline typecheck$ tsc -p tsconfig.json --noEmit
+packages/pipeline typecheck: Done
+apps/web typecheck$ tsc -p tsconfig.json --noEmit
+apps/worker typecheck$ tsc -p tsconfig.json --noEmit
+apps/cli typecheck$ tsc -p tsconfig.json --noEmit
+apps/cli typecheck: Done
+apps/worker typecheck: Done
+apps/web typecheck: Done
+
+> solana-sentinel@0.3.0 lint /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> eslint --max-warnings 0 packages apps/worker apps/cli tests && pnpm --filter @sat/web run lint
+
+
+> @sat/web@0.1.0 lint /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/apps/web
+> eslint . --max-warnings 0
+
+
+> solana-sentinel@0.3.0 test /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> vitest run
+
+
+ RUN  v3.2.7 /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+
+ ✓ tests/history-http.test.ts (17 tests) 109ms
+ ✓ tests/cli-shutdown.test.ts (1 test) 234ms
+ ✓ tests/redteam-fixes.test.ts (10 tests) 42ms
+ ✓ tests/durable-history.test.ts (16 tests) 342ms
+ ✓ tests/pipeline.test.ts (6 tests) 104ms
+ ✓ tests/validation-lab.test.ts (28 tests) 22ms
+ ✓ tests/provider-fail-closed.test.ts (3 tests) 532ms
+   ✓ configured real providers fail closed for known demo mints > Helius failure yields unknown authority risk, not a clean demo profile  521ms
+ ✓ tests/persistence.test.ts (8 tests | 2 skipped) 48ms
+ ✓ tests/p0-invariants.test.ts (7 tests) 59ms
+ ✓ tests/integration.test.ts (19 tests) 596ms
+   ✓ on-chain adapters > helius failure on unknown mint returns insufficient-data inputs, not synthetic clean flags  566ms
+ ✓ tests/provider-evidence.test.ts (7 tests) 465ms
+   ✓ provider readiness and token metadata are grounded in actual evidence > malformed response does not expose credential-bearing network errors  454ms
+ ✓ tests/wallet-pipeline.test.ts (24 tests) 20ms
+ ✓ tests/stream-health.test.ts (2 tests) 3ms
+ ✓ tests/intelligence-events.test.ts (5 tests) 11ms
+ ✓ tests/v2-public-demo.test.ts (8 tests) 7ms
+ ✓ tests/wallet-migration.test.ts (20 tests) 20ms
+ ✓ tests/history-process.test.ts (3 tests) 931ms
+   ✓ actual child-process history restart boundaries > SIGKILL before rename preserves the prior file and fails closed on orphaned writer ownership  474ms
+ ✓ tests/sentinel-v3.test.ts (26 tests) 18ms
+ ✓ tests/migration-intelligence.test.ts (1 test) 4ms
+ ✓ tests/normalization-reliability.test.ts (23 tests) 8ms
+ ✓ tests/concurrent-portfolio.test.ts (7 tests) 10ms
+ ✓ tests/helius-swap.test.ts (5 tests) 6ms
+ ✓ tests/historical-signals.test.ts (10 tests) 8ms
+ ✓ tests/risk-engine.test.ts (4 tests) 3ms
+ ✓ tests/policy-engine.test.ts (4 tests) 3ms
+ ✓ tests/token-risk.test.ts (11 tests) 3ms
+
+ Test Files  26 passed (26)
+      Tests  273 passed | 2 skipped (275)
+   Start at  20:34:41
+   Duration  1.75s (transform 673ms, setup 0ms, collect 2.71s, tests 3.61s, environment 3ms, prepare 1.25s)
+
+
+> solana-sentinel@0.3.0 build /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> pnpm -r --filter=./packages/* run build && pnpm --filter=@sat/web run build && pnpm --filter=@sat/worker run build
+
+Scope: 27 of 31 workspace projects
+packages/intelligence-events build$ tsc -p tsconfig.json
+packages/shared build$ tsc -p tsconfig.json
+packages/validation-lab build$ tsc -p tsconfig.json
+packages/validation-lab build: Done
+packages/intelligence-events build: Done
+packages/shared build: Done
+packages/alerts build$ tsc -p tsconfig.json
+packages/analytics build$ tsc -p tsconfig.json
+packages/entitlements build$ tsc -p tsconfig.json
+packages/execution build$ tsc -p tsconfig.json
+packages/entitlements build: Done
+packages/analytics build: Done
+packages/market-data build$ tsc -p tsconfig.json
+packages/observability build$ tsc -p tsconfig.json
+packages/alerts build: Done
+packages/policy-engine build$ tsc -p tsconfig.json
+packages/execution build: Done
+packages/portfolio build$ tsc -p tsconfig.json
+packages/observability build: Done
+packages/research-agent build$ tsc -p tsconfig.json
+packages/market-data build: Done
+packages/risk-engine build$ tsc -p tsconfig.json
+packages/policy-engine build: Done
+packages/signals build$ tsc -p tsconfig.json
+packages/portfolio build: Done
+packages/streaming build$ tsc -p tsconfig.json
+packages/risk-engine build: Done
+packages/token-risk build$ tsc -p tsconfig.json
+packages/signals build: Done
+packages/wallet-intel build$ tsc -p tsconfig.json
+packages/research-agent build: Done
+packages/streaming build: Done
+packages/wallet-migration build$ tsc -p tsconfig.json
+packages/x402 build$ tsc -p tsconfig.json
+packages/x402 build: Done
+packages/token-risk build: Done
+packages/wallet-migration build: Done
+packages/wallet-intel build: Done
+packages/discovery build$ tsc -p tsconfig.json
+packages/wallet-graph build$ tsc -p tsconfig.json
+packages/solana build$ tsc -p tsconfig.json
+packages/paper-trading build$ tsc -p tsconfig.json
+packages/wallet-graph build: Done
+packages/paper-trading build: Done
+packages/discovery build: Done
+packages/solana build: Done
+packages/experiments build$ tsc -p tsconfig.json
+packages/backtest build$ tsc -p tsconfig.json
+packages/backtest build: Done
+packages/experiments build: Done
+packages/database build$ tsc -p tsconfig.json
+packages/database build: Done
+packages/pipeline build$ tsc -p tsconfig.json
+packages/pipeline build: Done
+
+> @sat/web@0.1.0 build /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/apps/web
+> next build
+
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config.ts took 76ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 411ms
+  Running TypeScript ...
+  Finished TypeScript in 1189ms ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/4) ...
+  Generating static pages using 7 workers (1/4) 
+  Generating static pages using 7 workers (2/4) 
+  Generating static pages using 7 workers (3/4) 
+✓ Generating static pages using 7 workers (4/4) in 66ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/health
+├ ƒ /api/ohlcv
+├ ƒ /api/premium/[resource]/[id]
+├ ƒ /api/state
+└ ƒ /api/v1/[...path]
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> @sat/worker@0.1.0 build /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/apps/worker
+> tsc -p tsconfig.json
+
+
+> solana-sentinel@0.3.0 secret-scan /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> bash scripts/secret-scan.sh
+
+Basic secret scan (patterns)...
+No high-confidence secret patterns found

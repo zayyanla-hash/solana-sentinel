@@ -1,0 +1,8 @@
+{
+  "commit": "2f0a583c1639b47a8f0c87d57fb9fa640f911203",
+  "testFiles": 17,
+  "reportedTests": 196,
+  "reportedPassed": 196,
+  "reportedFailed": 0,
+  "warning": "Original PG tests can return early when unavailable and still be reported passing. This reported count does not prove a database round trip."
+}

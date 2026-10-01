@@ -1,0 +1,134 @@
+{
+  "name": "synthetic-offline-ingestion",
+  "version": 1,
+  "at": "2026-10-01T03:19:53.355Z",
+  "commit": "2f0a583c1639b47a8f0c87d57fb9fa640f911203",
+  "trackedChanges": [
+    ".env.example",
+    ".gitignore",
+    "apps/cli/src/index.ts",
+    "apps/worker/src/index.ts",
+    "package.json",
+    "packages/database/src/index.ts",
+    "packages/database/src/postgres.ts",
+    "packages/database/src/types.ts",
+    "packages/execution/src/index.ts",
+    "packages/market-data/src/index.ts",
+    "packages/pipeline/src/index.ts",
+    "packages/pipeline/src/providers.ts",
+    "packages/pipeline/src/verify-wallet.ts",
+    "packages/research-agent/src/index.ts",
+    "packages/solana/src/history-types.ts",
+    "packages/solana/src/index.ts",
+    "packages/solana/src/jupiter-token.ts",
+    "packages/solana/src/normalize.ts",
+    "packages/solana/src/parsed-events.ts",
+    "packages/solana/src/wallet-history.ts",
+    "packages/streaming/src/index.ts",
+    "tests/integration.test.ts",
+    "tests/persistence.test.ts"
+  ],
+  "environment": {
+    "node": "v26.9.0",
+    "os": "darwin",
+    "release": "24.3.0",
+    "arch": "arm64",
+    "cpu": "Apple M3",
+    "logicalCpus": 8
+  },
+  "conditions": "Synthetic repeated USDC->token shape; in-process normalization/classification and duplicate replay. No RPC/WSS/mainnet traffic. Latencies exclude acquisition, network and durable writes. Archive timings use local fsync+rename. RSS is sampled at run boundaries, not a continuous peak; no forced GC.",
+  "runs": [
+    {
+      "run": 1,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 78.134458,
+      "eventsPerSecond": 63992.25294427717,
+      "p50Ms": 0.011124999999992724,
+      "p95Ms": 0.01966600000000085,
+      "p99Ms": 0.04812499999999886,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 2,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 61.440708,
+      "eventsPerSecond": 81379.27056439518,
+      "p50Ms": 0.010167000000024018,
+      "p95Ms": 0.012667000000021744,
+      "p99Ms": 0.03133300000001782,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 3,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 57.37141700000001,
+      "eventsPerSecond": 87151.41200016027,
+      "p50Ms": 0.009875000000022283,
+      "p95Ms": 0.011541999999963082,
+      "p99Ms": 0.019707999999980075,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 4,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 54.326584000000025,
+      "eventsPerSecond": 92035.97266487431,
+      "p50Ms": 0.009500000000002728,
+      "p95Ms": 0.010249999999984993,
+      "p99Ms": 0.013542000000029475,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 5,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 54.86666700000001,
+      "eventsPerSecond": 91130.011597023,
+      "p50Ms": 0.009457999999995081,
+      "p95Ms": 0.010207999999977346,
+      "p99Ms": 0.01799999999997226,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    }
+  ],
+  "archive": {
+    "uniqueTrades": 5000,
+    "concurrentDuplicateCallers": 32,
+    "upstreamCallsForBurst": 1,
+    "firstCommitMs": 295.424541,
+    "restartReplayMs": 116.40795800000001,
+    "replayDuplicatedTrades": 0,
+    "checkpoint": {
+      "completedAt": "2026-10-01T03:19:53.266Z",
+      "savedAt": "2026-10-01T03:19:53.266Z",
+      "tradeHighWater": {
+        "signature": "af6fcfb38a6087cbbea41444b6f9ebece329616616e66830d67aa25cd03e1470be837cebb024ee5b15b8da3f008582b3591a8ffcb5e902db4fc81bb3c4d44804",
+        "timestamp": "2023-11-14T23:36:39.000Z"
+      }
+    }
+  },
+  "memoryBytes": {
+    "rssStart": 99909632,
+    "rssEnd": 300253184,
+    "rssMaxSampled": 300253184,
+    "heapStart": 15772824,
+    "heapEnd": 132060032
+  },
+  "cpuMicroseconds": {
+    "user": 886673,
+    "system": 82958
+  }
+}

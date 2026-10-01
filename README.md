@@ -57,6 +57,19 @@ pnpm --filter @sat/intelligence-events run typecheck
 
 The modules use supplied observations and labeled fixtures. They do not establish profitable performance, production data quality, or revenue readiness. See [wallet migration](docs/WALLET-MIGRATION.md), [validation lab](docs/VALIDATION-LAB.md), [research methodology](docs/RESEARCH-METHODOLOGY.md), and [intelligence events](docs/INTELLIGENCE-EVENTS.md).
 
+## Reliability checkpoint — September 30, 2026
+
+This branch adds bounded Helius history requests/pagination, conservative parsing, opt-in durable wallet-history snapshots, and atomic checks for concurrent paper fills and marks. Local validation passed 273 tests; two Postgres tests require an explicitly configured disposable `SENTINEL_TEST_DATABASE_URL` and were skipped. No real-mainnet classification accuracy or stream reconnect evidence is claimed.
+
+```bash
+pnpm validate
+pnpm benchmark:ingestion --events=5000 --runs=5
+```
+
+Set `SAT_HISTORY_DIR=./runtime-history` to enable the single-writer local archive for keyed history reads. A hard kill can leave an orphan writer lock that needs manual recovery after confirming the old process is dead. `tradeHighWater` records classified trades; it does not prove gap-free Solana history. The Helius stream adapter remains unavailable, and the worker runs one batch pass.
+
+See [the Session 1 report](artifacts/session-1/REPORT.md) for exact validation, synthetic measurements, failure tests, and remaining P0/P1 work. Live broadcast remains disabled.
+
 ## Operating modes
 
 | Mode | Behavior |

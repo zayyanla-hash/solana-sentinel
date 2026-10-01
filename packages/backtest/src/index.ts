@@ -3,12 +3,17 @@ import {
   type StrategyLabConfig,
   type BacktestResult,
   type BacktestTrade,
+  type WalletFlowEvidence,
+  type WalletCredibilityScore,
+  type WalletCluster,
+  OhlcvBarSchema,
   DEFAULT_STRATEGY_LAB_CONFIG,
   BacktestResultSchema,
   newId,
   nowIso,
 } from "@sat/shared";
 import { computePerformance } from "@sat/analytics";
+import { eligibleWalletFlow, countDistinctWalletGroups } from "@sat/signals";
 
 export const BACKTEST_ENGINE_VERSION = "backtest-v1";
 
@@ -20,6 +25,16 @@ export interface BacktestMarket {
   tokenRiskScore?: number | null;
   confirmingWallets?: number;
   walletCredibility?: number;
+  walletFlowEvidence?: WalletFlowEvidence[];
+  walletScores?: WalletCredibilityScore[];
+  walletClusters?: WalletCluster[];
+  /** Historical snapshots must be known by each decision bar; current values cannot be backdated. */
+  riskByTimestamp?: Array<{
+    timestamp: number;
+    liquidityUsd: number;
+    tokenAgeHours: number;
+    tokenRiskScore: number;
+  }>;
 }
 
 function costsUsd(notional: number, impactBps: number, feeUsd: number): number {
@@ -57,7 +72,7 @@ export function runBacktest(params: {
       datasetVersion: config.datasetVersion,
       config,
       equity: [startCash],
-      benchmarkEquity: [startCash],
+      benchmarkEquity: [],
       trades: [],
       metrics: null,
       warnings: ["INSUFFICIENT_HISTORY — need at least 8 bars"],
@@ -70,6 +85,25 @@ export function runBacktest(params: {
   }
 
   const bars = [...primary.bars].sort((a, b) => a.timestamp - b.timestamp);
+  const riskByTime = new Map(primary.riskByTimestamp?.map((risk) => [risk.timestamp, risk]) ?? []);
+  const liveRiskComplete = isDemo || bars.every((bar) => {
+    const risk = riskByTime.get(bar.timestamp);
+    return risk && Number.isFinite(risk.liquidityUsd) && risk.liquidityUsd > 0 &&
+      Number.isFinite(risk.tokenAgeHours) && Number.isFinite(risk.tokenRiskScore);
+  });
+  const liquidityAt = (i: number): number | null | undefined =>
+    isDemo ? primary.liquidityUsd : riskByTime.get(bars[i]!.timestamp)?.liquidityUsd;
+  if (bars.some((bar, i) => !OhlcvBarSchema.safeParse(bar).success ||
+    bar.open <= 0 || bar.close <= 0 || bar.low <= 0 ||
+    (i > 0 && bar.timestamp <= bars[i - 1]!.timestamp))) {
+    return BacktestResultSchema.parse({
+      id: newId(), strategyVersion: config.version, datasetVersion: config.datasetVersion, config,
+      equity: [startCash], benchmarkEquity: [], trades: [], metrics: null,
+      warnings: ["INVALID_HISTORY — OHLCV bars must have positive prices and unique timestamps"],
+      dataCoverage: { bars: bars.length, interval: "unknown", startMs: null, endMs: null },
+      walkForward: null, isDemo, label: isDemo ? "DEMO" : "BACKTEST", createdAt: nowIso(),
+    });
+  }
   const fillLag = 1;
   let cash = startCash;
   let qty = 0;
@@ -108,19 +142,35 @@ export function runBacktest(params: {
   };
 
   const canEnter = (i: number): { ok: boolean; reason: string } => {
-    if ((primary.liquidityUsd ?? 1_000_000) < config.liquidityFloorUsd) {
+    if (!liveRiskComplete) return { ok: false, reason: "historical risk coverage" };
+    const risk = isDemo ? primary : riskByTime.get(bars[i]!.timestamp);
+    if (risk?.liquidityUsd == null || !Number.isFinite(risk.liquidityUsd) || risk.liquidityUsd < config.liquidityFloorUsd) {
       return { ok: false, reason: "liquidity floor" };
     }
-    if ((primary.tokenAgeHours ?? 10_000) < config.minTokenAgeHours) {
+    if (risk.tokenAgeHours == null || !Number.isFinite(risk.tokenAgeHours) || risk.tokenAgeHours < config.minTokenAgeHours) {
       return { ok: false, reason: "token age" };
     }
-    if ((primary.tokenRiskScore ?? 20) > config.maxTokenRiskScore) {
+    if (risk.tokenRiskScore == null || !Number.isFinite(risk.tokenRiskScore) || risk.tokenRiskScore > config.maxTokenRiskScore) {
       return { ok: false, reason: "token-risk ceiling" };
     }
-    if ((primary.walletCredibility ?? 70) < config.minWalletCredibility) {
+    const flow = eligibleWalletFlow({
+      mint: primary.mint,
+      asOf: new Date(bars[i]!.timestamp).toISOString(),
+      isDemo,
+      evidence: primary.walletFlowEvidence ?? [],
+      wallets: primary.walletScores ?? [],
+    });
+    const byWallet = new Map(flow.map((x) => [x.flow.wallet, x.score]));
+    const credibility = byWallet.size ? Math.min(...[...byWallet.values()].map((x) => x.score)) :
+      isDemo ? primary.walletCredibility : undefined;
+    const confirming = byWallet.size
+      ? countDistinctWalletGroups(flow.map((x) => x.flow),
+          (primary.walletClusters ?? []).filter((cluster) => cluster.isDemo === isDemo))
+      : isDemo ? primary.confirmingWallets : undefined;
+    if (credibility == null || credibility < config.minWalletCredibility) {
       return { ok: false, reason: "wallet credibility" };
     }
-    if ((primary.confirmingWallets ?? 2) < config.minConfirmingWallets) {
+    if (confirming == null || confirming < config.minConfirmingWallets) {
       return { ok: false, reason: "confirming wallets" };
     }
     if (momentumAt(i) < config.momentumThreshold) return { ok: false, reason: "momentum" };
@@ -158,15 +208,16 @@ export function runBacktest(params: {
         exitReason = "trailing-exit";
       } else if (hold >= config.maxHoldingBars) exitReason = "max-hold";
       if (exitReason) {
-        const fillPx = bars[Math.min(i + fillLag, bars.length - 1)]!.open;
+        if (i + fillLag >= bars.length) continue;
+        const fillPx = bars[i + fillLag]!.open;
         const usd = qty * fillPx;
-        const c = costsUsd(usd, impactBps(usd, primary.liquidityUsd), 0.02);
+        const c = costsUsd(usd, impactBps(usd, liquidityAt(i)), 0.02);
         cash += usd - c;
         trades.push({
           mint: primary.mint,
           side: "SELL",
           barIndex: i + fillLag,
-          timestamp: fillBar.timestamp,
+          timestamp: bars[i + fillLag]!.timestamp,
           price: fillPx,
           qty,
           usd,
@@ -190,7 +241,7 @@ export function runBacktest(params: {
         }
         const usd = Math.min(config.positionSizeUsd, cash * 0.95);
         if (usd < 50) continue;
-        const c = costsUsd(usd, impactBps(usd, primary.liquidityUsd), 0.02);
+        const c = costsUsd(usd, impactBps(usd, liquidityAt(i)), 0.02);
         const buyQty = (usd - c) / fillPx;
         cash -= usd;
         qty = buyQty;
@@ -214,7 +265,7 @@ export function runBacktest(params: {
   if (qty > 0) {
     const last = bars[bars.length - 1]!;
     const usd = qty * last.close;
-    const c = costsUsd(usd, impactBps(usd, primary.liquidityUsd), 0.02);
+    const c = costsUsd(usd, impactBps(usd, liquidityAt(bars.length - 1)), 0.02);
     cash += usd - c;
     trades.push({
       mint: primary.mint,
@@ -230,9 +281,25 @@ export function runBacktest(params: {
     qty = 0;
   }
 
-  const bench = params.benchmark ?? bars;
-  const b0 = bench[0]?.close ?? 0;
-  const benchmarkEquity = bench.map((b) => (b0 > 0 ? startCash * (b.close / b0) : startCash));
+  const bench = params.benchmark;
+  const benchmarkByTime = new Map(bench?.filter((b) => OhlcvBarSchema.safeParse(b).success && b.close > 0)
+    .map((b) => [b.timestamp, b.close]) ?? []);
+  const aligned = bars.slice(2).map((b) => benchmarkByTime.get(b.timestamp));
+  const benchmarkAvailable = aligned.length === equity.length && aligned.every((p) => p != null && p > 0);
+  const b0 = aligned[0] ?? 0;
+  const benchmarkEquity = benchmarkAvailable ? aligned.map((p) => startCash * (p! / b0)) : [];
+  if (!benchmarkAvailable) warnings.push("BENCHMARK_UNAVAILABLE — time-aligned SOL bars required");
+  if (!isDemo && (!primary.walletFlowEvidence?.length || !primary.walletScores?.length)) {
+    warnings.push("WALLET_EVIDENCE_UNAVAILABLE — no historical wallet confirmations");
+  }
+  if (isDemo
+    ? primary.tokenRiskScore == null || primary.liquidityUsd == null || primary.tokenAgeHours == null
+    : !liveRiskComplete) {
+    warnings.push("RISK_INPUTS_UNAVAILABLE — entries require time-aligned risk, liquidity, and token age");
+  }
+  if (isDemo && (primary.confirmingWallets != null || primary.walletCredibility != null)) {
+    warnings.push("DEMO_ASSUMPTIONS — static wallet confirmations and credibility are synthetic");
+  }
   const feeDragUsd = trades.reduce((s, t) => s + t.costsUsd, 0);
   const perf = computePerformance(equity, feeDragUsd);
   const hide = trades.length < 10 || equity.length < 30;

@@ -372,6 +372,8 @@ export {
 export { parseHeliusEnhancedTx, isQuoteMint, USDT } from "./helius-swap";
 export { tradesAsOf } from "./replay";
 export { DurableWalletHistoryProvider, HistoryStoreError, type DurableHistoryOptions } from "./durable-history";
+export { ReadOnlyRpcReader, interpretRpcTransaction, isTransactionSignature, MAINNET_GENESIS, type SignatureRow, type RpcInterpretation } from "./rpc-reader";
+export { boundedInteger, SafeHttpError } from "./http";
 export {
   normalizeParsedEventsItem,
   normalizeEnhancedTx,

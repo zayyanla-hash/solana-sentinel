@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-01T04:59:44.898Z",
+  "scope": "synthetic copies of one finalized RPC shape with generated signatures; isolated local PostgreSQL; no RPC/network latency; one run",
+  "environment": {
+    "node": "v26.9.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M3",
+    "postgres": "17.11 (Homebrew)"
+  },
+  "count": 200,
+  "batchSize": 20,
+  "parser": {
+    "samples": 200,
+    "p50Ms": 0.24554200000000037,
+    "p95Ms": 0.6641250000000127,
+    "maxMs": 2.6819169999999986
+  },
+  "commitBatches": {
+    "samples": 10,
+    "p50Ms": 19.63970800000004,
+    "p95Ms": 38.623208000000034,
+    "maxMs": 38.623208000000034
+  },
+  "commitTotalMs": 206.7415850000001,
+  "recordsPerSecond": 967.3912483547996,
+  "duplicatesSuppressed": 200,
+  "duplicateReplayMs": 96.57916700000004,
+  "stats": {
+    "wallets": 1,
+    "observations": 200,
+    "trades": 200,
+    "pendingAlerts": 200,
+    "outcomes": {
+      "CLASSIFIED": 200,
+      "UNKNOWN": 0,
+      "FAILED": 0
+    },
+    "coverage": {
+      "BOOTSTRAP_WINDOW": 0,
+      "CATCHING_UP": 0,
+      "CURRENT": 1
+    }
+  },
+  "rssBytes": 168919040
+}

@@ -15,6 +15,8 @@ import {
   type WalletCredibilityScore,
   type SentinelSignal,
   type AlertRule,
+  type AlertEvent,
+  AlertEventSchema,
   type BacktestResult,
   type WatchlistItem,
   CandidateAssetSchema,
@@ -32,25 +34,45 @@ import {
 import type { ExperimentResult } from "@sat/experiments";
 import { createInitialPortfolio } from "@sat/portfolio";
 import { STORE_SCHEMA_SQL, STORE_SCHEMA_VERSION } from "./schema-sql";
-import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork, MarkUnitOfWork } from "./types";
-import { AlreadyExecutedError, StalePortfolioError } from "./types";
+import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork, MarkUnitOfWork, AlertCooldown } from "./types";
+import { AlreadyExecutedError, StalePortfolioError, validateAlertCooldown } from "./types";
 import { newId } from "@sat/shared";
 
 const { Pool } = pg;
+const MAX_ALERT_EVENT_FACTS = 100_000;
 
-/** Hosted Supabase / sslmode=require get TLS. Local CI URLs stay plaintext. */
+/** Remote databases use verified TLS by default; local CI URLs stay plaintext. */
 export function buildPoolConfig(connectionString: string): pg.PoolConfig {
-  const hosted =
-    /supabase\.(co|com)/i.test(connectionString) ||
-    /sslmode=(require|verify-ca|verify-full)/i.test(connectionString) ||
-    process.env.DATABASE_SSL === "true";
-  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "true";
+  let url: URL;
+  try { url = new URL(connectionString); } catch { throw new Error("DATABASE_URL_INVALID"); }
+  const local = !url.hostname || ["localhost", "127.0.0.1", "[::1]", "::1"].includes(url.hostname.toLowerCase());
+  const tls = process.env.DATABASE_SSL === "true" || (!local && process.env.DATABASE_SSL !== "false");
+  const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false";
+  const sslmode = url.searchParams.get("sslmode")?.toLowerCase();
+  const libpqCompat = url.searchParams.get("uselibpqcompat") === "true";
+  if (tls && (sslmode === "disable" || url.searchParams.get("ssl") === "0")) {
+    throw new Error("DATABASE_TLS_REQUIRED");
+  }
+  if (tls && rejectUnauthorized && (
+    sslmode === "no-verify" || url.searchParams.get("ssl") === "no-verify" ||
+    (libpqCompat && ["require", "prefer", "verify-ca"].includes(sslmode ?? ""))
+  )) {
+    throw new Error("DATABASE_TLS_VERIFICATION_REQUIRED");
+  }
+  // pg parses SSL query parameters after PoolConfig and can replace our TLS
+  // settings. Keep credentials and other parameters, but make this policy the
+  // single source of truth for SSL mode and certificate verification.
+  if (tls) {
+    url.searchParams.delete("sslmode");
+    url.searchParams.delete("uselibpqcompat");
+    url.searchParams.delete("ssl");
+  }
   return {
-    connectionString,
+    connectionString: tls ? url.toString() : connectionString,
     max: Number(process.env.DATABASE_POOL_MAX ?? 8),
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 8_000,
-    ssl: hosted ? { rejectUnauthorized } : undefined,
+    ssl: tls ? { rejectUnauthorized } : undefined,
   };
 }
 
@@ -73,53 +95,83 @@ export class PostgresDatabase implements Database {
   constructor(
     connectionString: string,
     startingCapital = Number(process.env.PAPER_STARTING_CAPITAL_USD ?? 100_000),
+    private readonly alertFactCapacity = MAX_ALERT_EVENT_FACTS,
   ) {
+    if (!Number.isSafeInteger(alertFactCapacity) || alertFactCapacity < 1 || alertFactCapacity > MAX_ALERT_EVENT_FACTS) {
+      throw new Error("ALERT_EVENT_CAPACITY_INVALID");
+    }
     this.startingCapital = startingCapital;
     this.pool = new Pool(buildPoolConfig(connectionString));
     this.pool.on("error", (err) => {
-      console.error("sat postgres pool error", err.message);
+      const rawCode = (err as Error & { code?: unknown }).code;
+      const code = typeof rawCode === "string" && /^[A-Z0-9_]{2,16}$/.test(rawCode)
+        ? rawCode : "UNKNOWN";
+      console.error("sat postgres pool error", code);
     });
   }
 
   private async ensure(): Promise<void> {
     if (!this.ready) {
-      this.ready = this.bootstrap();
+      this.ready = this.bootstrap().catch((err) => {
+        this.ready = null;
+        throw err;
+      });
     }
     await this.ready;
   }
 
   private async bootstrap(): Promise<void> {
+    const client = await this.pool.connect();
     try {
-      await this.pool.query('create extension if not exists "pgcrypto"');
-    } catch {
-      /* app-generated UUIDs; extension is optional */
-    }
-    await this.pool.query(STORE_SCHEMA_SQL);
-    await this.pool.query(
-      `insert into sat_schema_version (id, version) values (1, $1)
-       on conflict (id) do update set version = excluded.version`,
-      [STORE_SCHEMA_VERSION],
-    );
-    const port = await this.pool.query("select payload from sat_portfolio where id = 1");
-    if (port.rowCount === 0) {
-      const { snapshot, positions } = createInitialPortfolio(this.startingCapital);
-      await this.pool.query("insert into sat_portfolio (id, payload) values (1, $1::jsonb)", [
-        snapshot,
-      ]);
-      await this.pool.query("insert into sat_equity (t, nav) values ($1, $2)", [
-        snapshot.timestamp,
-        snapshot.navUsd,
-      ]);
-      await this.pool.query(
-        "insert into sat_meta (k, payload) values ('startingCapital', $1::jsonb) on conflict (k) do update set payload = excluded.payload",
-        [{ usd: this.startingCapital }],
-      );
-      for (const p of positions) {
-        await this.pool.query(
-          "insert into sat_positions (id, mint, payload, updated_at) values ($1, $2, $3::jsonb, $4)",
-          [p.id, p.mint, p, p.updatedAt],
-        );
+      await client.query("begin");
+      await client.query("set local lock_timeout = '5s'");
+      await client.query("set local statement_timeout = '15s'");
+      // Schema DDL and initial portfolio creation must be single-writer across instances.
+      await client.query("select pg_advisory_xact_lock(20260930, 1)");
+      await client.query("savepoint optional_extension");
+      try {
+        await client.query('create extension if not exists "pgcrypto"');
+        await client.query("release savepoint optional_extension");
+      } catch {
+        await client.query("rollback to savepoint optional_extension");
       }
+      await client.query(STORE_SCHEMA_SQL);
+      const priorVersion = await client.query("select version from sat_schema_version where id = 1 for update");
+      if (Number(priorVersion.rows[0]?.version ?? 0) > STORE_SCHEMA_VERSION) {
+        throw new Error("sat-schema-newer-than-runtime");
+      }
+      await client.query(
+        `insert into sat_schema_version (id, version) values (1, $1)
+         on conflict (id) do update set version = greatest(sat_schema_version.version, excluded.version)`,
+        [STORE_SCHEMA_VERSION],
+      );
+      const { snapshot, positions } = createInitialPortfolio(this.startingCapital);
+      const port = await client.query(
+        "insert into sat_portfolio (id, payload) values (1, $1::jsonb) on conflict (id) do nothing returning id",
+        [snapshot],
+      );
+      if (port.rowCount) {
+        await client.query(
+          "insert into sat_equity (t, nav) values ($1, $2)",
+          [snapshot.timestamp, snapshot.navUsd],
+        );
+        await client.query(
+          "insert into sat_meta (k, payload) values ('startingCapital', $1::jsonb) on conflict (k) do nothing",
+          [{ usd: this.startingCapital }],
+        );
+        for (const p of positions) {
+          await client.query(
+            "insert into sat_positions (id, mint, payload, updated_at) values ($1, $2, $3::jsonb, $4)",
+            [p.id, p.mint, p, p.updatedAt],
+          );
+        }
+      }
+      await client.query("commit");
+    } catch (err) {
+      await client.query("rollback");
+      throw err;
+    } finally {
+      client.release();
     }
   }
 
@@ -198,6 +250,7 @@ export class PostgresDatabase implements Database {
       walletScores: [] as WalletCredibilityScore[],
       sentinelSignals: [] as SentinelSignal[],
       alertRules: [] as AlertRule[],
+      alertEvents: [] as AlertEvent[],
       backtests: [] as BacktestResult[],
     };
   }
@@ -214,26 +267,40 @@ export class PostgresDatabase implements Database {
         ? (rec.sentinelSignals as SentinelSignal[])
         : [],
       alertRules: Array.isArray(rec.alertRules) ? (rec.alertRules as AlertRule[]) : [],
+      alertEvents: Array.isArray(rec.alertEvents) ? (rec.alertEvents as AlertEvent[]) : [],
       backtests: Array.isArray(rec.backtests) ? (rec.backtests as BacktestResult[]) : [],
     };
   }
 
-  private async readIntel(): Promise<ReturnType<PostgresDatabase["emptyIntel"]>> {
+  private async mutateIntel<T>(
+    mutate: (intel: ReturnType<PostgresDatabase["emptyIntel"]>, client: pg.PoolClient) =>
+      { patch: Partial<ReturnType<PostgresDatabase["emptyIntel"]>>; result: T } |
+      Promise<{ patch: Partial<ReturnType<PostgresDatabase["emptyIntel"]>>; result: T }>,
+  ): Promise<T> {
     await this.ensure();
-    const row = await this.pool.query("select payload from sat_meta where k = 'intel'");
-    return this.intelFromPayload(row.rows[0]?.payload);
-  }
-
-  private async writeIntel(
-    patch: Partial<ReturnType<PostgresDatabase["emptyIntel"]>>,
-  ): Promise<void> {
-    const current = await this.readIntel();
-    const next = { ...current, ...patch };
-    await this.pool.query(
-      `insert into sat_meta (k, payload) values ('intel', $1::jsonb)
-       on conflict (k) do update set payload = excluded.payload`,
-      [next],
-    );
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("set local lock_timeout = '5s'");
+      await client.query("set local statement_timeout = '15s'");
+      // A plain SELECT FOR UPDATE cannot lock a missing row. Insert it first;
+      // concurrent cold writers then wait on the primary-key conflict.
+      await client.query("insert into sat_meta (k, payload) values ('intel', '{}'::jsonb) on conflict (k) do nothing");
+      const row = await client.query("select payload from sat_meta where k = 'intel' for update");
+      const raw = row.rows[0]?.payload;
+      const intel = this.intelFromPayload(raw);
+      const { patch, result } = await mutate(intel, client);
+      await client.query("update sat_meta set payload = $1::jsonb where k = 'intel'", [
+        { ...(raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}), ...patch },
+      ]);
+      await client.query("commit");
+      return result;
+    } catch (err) {
+      await client.query("rollback");
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async setCandidates(c: CandidateAsset[]): Promise<void> {
@@ -544,6 +611,8 @@ export class PostgresDatabase implements Database {
         );
       }
       await client.query("delete from sat_meta where k = 'intel'");
+      await client.query("delete from sat_alert_event_facts");
+      await client.query("delete from sat_alert_cooldowns");
       await client.query("commit");
     } catch (err) {
       await client.query("rollback");
@@ -554,23 +623,99 @@ export class PostgresDatabase implements Database {
   }
 
   async setWatchlist(items: WatchlistItem[]): Promise<void> {
-    await this.writeIntel({ watchlist: items });
+    await this.mutateIntel(() => ({ patch: { watchlist: items }, result: undefined }));
+  }
+  async addWatchlistItem(item: WatchlistItem, maxItems: number): Promise<WatchlistItem> {
+    return this.mutateIntel((intel) => {
+      const existing = intel.watchlist.find((w) => w.kind === item.kind && w.address === item.address);
+      if (existing) return { patch: {}, result: existing };
+      if (intel.watchlist.length >= maxItems) throw new Error("WATCHLIST_LIMIT");
+      return { patch: { watchlist: [item, ...intel.watchlist] }, result: item };
+    });
+  }
+  async removeWatchlistItem(id: string): Promise<void> {
+    await this.mutateIntel((intel) => ({
+      patch: { watchlist: intel.watchlist.filter((w) => w.id !== id) }, result: undefined,
+    }));
   }
   async setWalletScores(scores: WalletCredibilityScore[]): Promise<void> {
-    await this.writeIntel({ walletScores: scores.slice(0, 200) });
+    await this.mutateIntel(() => ({ patch: { walletScores: scores.slice(0, 200) }, result: undefined }));
+  }
+  async upsertWalletScore(score: WalletCredibilityScore): Promise<void> {
+    await this.mutateIntel((intel) => ({
+      patch: { walletScores: [score, ...intel.walletScores.filter((s) => s.address !== score.address)].slice(0, 200) },
+      result: undefined,
+    }));
   }
   async setSentinelSignals(signals: SentinelSignal[]): Promise<void> {
-    await this.writeIntel({ sentinelSignals: signals.slice(0, 200) });
+    await this.mutateIntel(() => ({ patch: { sentinelSignals: signals.slice(0, 200) }, result: undefined }));
   }
   async addAlertRule(rule: AlertRule): Promise<void> {
-    const intel = await this.readIntel();
-    await this.writeIntel({
-      alertRules: [rule, ...intel.alertRules.filter((r) => r.id !== rule.id)].slice(0, 100),
+    await this.mutateIntel((intel) => ({
+      patch: { alertRules: [rule, ...intel.alertRules.filter((r) => r.id !== rule.id)].slice(0, 100) },
+      result: undefined,
+    }));
+  }
+  async addAlertEvents(events: AlertEvent[]): Promise<void> {
+    await this.mutateIntel((intel) => {
+      const ids = new Set(events.map((event) => event.id));
+      const seen = new Set<string>();
+      const unique = events.filter((event) => {
+        if (seen.has(event.id)) return false;
+        seen.add(event.id);
+        return true;
+      });
+      return {
+        patch: { alertEvents: [...unique, ...intel.alertEvents.filter((event) => !ids.has(event.id))].slice(0, 500) },
+        result: undefined,
+      };
+    });
+  }
+  async recordAlertEvent(event: AlertEvent, cooldown?: AlertCooldown): Promise<AlertEvent> {
+    return this.mutateIntel(async (intel, client) => {
+      const fact = await client.query("select payload from sat_alert_event_facts where id = $1", [event.id]);
+      if (fact.rowCount) return { patch: {}, result: fact.rows[0]!.payload as AlertEvent };
+      // mutateIntel holds the intel row lock across this count and insertion,
+      // so concurrent instances cannot admit a fact beyond the hard cap.
+      const count = await client.query("select count(*)::int as n from sat_alert_event_facts");
+      if (Number(count.rows[0]?.n) >= this.alertFactCapacity) throw new Error("ALERT_EVENT_CAPACITY");
+      const inHistory = intel.alertEvents.find((saved) => saved.id === event.id);
+      if (inHistory) {
+        await client.query("insert into sat_alert_event_facts (id, payload) values ($1, $2::jsonb)", [inHistory.id, inHistory]);
+        return { patch: {}, result: inHistory };
+      }
+      const parsed = AlertEventSchema.parse(event);
+      const gate = validateAlertCooldown(parsed, cooldown);
+      let recorded = parsed;
+      if (gate) {
+        await client.query("delete from sat_alert_cooldowns where expires_at <= clock_timestamp()");
+        const active = await client.query(
+          "select 1 from sat_alert_cooldowns where k = $1 and expires_at > clock_timestamp()",
+          [gate.key],
+        );
+        if (active.rowCount) {
+          recorded = { ...parsed, delivered: false, suppressedReason: "cooldown" };
+        } else {
+          const count = await client.query("select count(*)::int as n from sat_alert_cooldowns");
+          if (Number(count.rows[0]?.n) >= 10_000) {
+            recorded = { ...parsed, delivered: false, suppressedReason: "cooldown-capacity" };
+          } else {
+            await client.query("insert into sat_alert_cooldowns (k, expires_at) values ($1, $2)", [gate.key, gate.expiresAt]);
+          }
+        }
+      }
+      await client.query("insert into sat_alert_event_facts (id, payload) values ($1, $2::jsonb)", [recorded.id, recorded]);
+      return {
+        patch: { alertEvents: [recorded, ...intel.alertEvents.filter((saved) => saved.id !== recorded.id)].slice(0, 500) },
+        result: recorded,
+      };
     });
   }
   async addBacktest(result: BacktestResult): Promise<void> {
-    const intel = await this.readIntel();
-    await this.writeIntel({ backtests: [result, ...intel.backtests].slice(0, 50) });
+    await this.mutateIntel((intel) => ({
+      patch: { backtests: [result, ...intel.backtests.filter((r) => r.id !== result.id)].slice(0, 50) },
+      result: undefined,
+    }));
   }
 
   async close(): Promise<void> {

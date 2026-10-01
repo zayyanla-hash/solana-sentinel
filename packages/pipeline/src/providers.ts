@@ -7,6 +7,7 @@ import {
 } from "@sat/solana";
 import { createExecutionProvider, type ExecutionProvider } from "@sat/execution";
 import { createResearchProvider, type ResearchProvider } from "@sat/research-agent";
+import { JournalWalletHistoryProvider } from "./journal-history";
 
 export interface AppProviders {
   market: MarketDataProvider;
@@ -28,10 +29,17 @@ export function getProviders(): AppProviders {
       onchain: createOnChainProvider(),
       execution: createExecutionProvider(),
       research: createResearchProvider(),
-      walletHistory: createWalletHistoryProvider(),
+      walletHistory: process.env.SAT_WALLET_HISTORY_SOURCE === "journal"
+        ? new JournalWalletHistoryProvider(requiredJournalUrl()) : createWalletHistoryProvider(),
     };
   }
   return cached;
+}
+
+function requiredJournalUrl(): string {
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) throw new Error("journal-database-required");
+  return url;
 }
 
 export function resetProvidersForTests(): void {

@@ -10,6 +10,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@/lib/request-guard": path.resolve(__dirname, "apps/web/src/lib/request-guard.ts"),
       "@sat/shared": path.resolve(__dirname, "packages/shared/src/index.ts"),
       "@sat/database": path.resolve(__dirname, "packages/database/src/index.ts"),
       "@sat/solana": path.resolve(__dirname, "packages/solana/src/index.ts"),

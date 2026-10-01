@@ -13,6 +13,7 @@ import {
   type WalletCredibilityScore,
   type SentinelSignal,
   type AlertRule,
+  type AlertEvent,
   type BacktestResult,
   type WatchlistItem,
 } from "@sat/shared";
@@ -58,6 +59,26 @@ export class StalePortfolioError extends Error {
   }
 }
 
+export interface AlertCooldown {
+  key: string;
+  expiresAt: string;
+}
+
+/** Validate only cooldowns for delivered INTERNAL events; other channels have no delivery gate. */
+export function validateAlertCooldown(event: AlertEvent, cooldown?: AlertCooldown): AlertCooldown | null {
+  if (!cooldown || event.channel !== "INTERNAL" || !event.delivered) return null;
+  const created = Date.parse(event.createdAt);
+  const expires = Date.parse(cooldown.expiresAt);
+  const hasControl = typeof cooldown.key === "string" &&
+    [...cooldown.key].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127);
+  if (typeof cooldown.key !== "string" || !cooldown.key.trim() || cooldown.key.length > 512 ||
+    hasControl || !Number.isFinite(created) || !Number.isFinite(expires) ||
+    expires <= created || expires <= Date.now()) {
+    throw new Error("ALERT_INVALID_COOLDOWN");
+  }
+  return { key: cooldown.key, expiresAt: new Date(expires).toISOString() };
+}
+
 export interface StoreSnapshot {
   mode: "memory" | "postgres";
   candidates: CandidateAsset[];
@@ -78,6 +99,7 @@ export interface StoreSnapshot {
   walletScores: WalletCredibilityScore[];
   sentinelSignals: SentinelSignal[];
   alertRules: AlertRule[];
+  alertEvents: AlertEvent[];
   backtests: BacktestResult[];
 }
 
@@ -101,8 +123,13 @@ export interface Database {
   recordMarkToMarket(work: MarkUnitOfWork): Promise<void>;
   reset(startingCapital: number): Promise<void>;
   setWatchlist(items: WatchlistItem[]): Promise<void>;
+  addWatchlistItem(item: WatchlistItem, maxItems: number): Promise<WatchlistItem>;
+  removeWatchlistItem(id: string): Promise<void>;
   setWalletScores(scores: WalletCredibilityScore[]): Promise<void>;
+  upsertWalletScore(score: WalletCredibilityScore): Promise<void>;
   setSentinelSignals(signals: SentinelSignal[]): Promise<void>;
   addAlertRule(rule: AlertRule): Promise<void>;
+  addAlertEvents(events: AlertEvent[]): Promise<void>;
+  recordAlertEvent(event: AlertEvent, cooldown?: AlertCooldown): Promise<AlertEvent>;
   addBacktest(result: BacktestResult): Promise<void>;
 }

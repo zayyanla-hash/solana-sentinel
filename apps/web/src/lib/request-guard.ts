@@ -6,6 +6,7 @@
 
 import { z } from "zod";
 import { SolanaAddressSchema, isPublicDemo } from "@sat/shared";
+import { parseApiKeys, resolveApiPrincipal } from "@sat/entitlements";
 
 function loopbackHost(host: string): boolean {
   const h = host.split(":")[0]?.toLowerCase() ?? "";
@@ -65,6 +66,27 @@ export const ActionSchema = z.discriminatedUnion("action", [
 
 export type ApiAction = z.infer<typeof ActionSchema>;
 
+const PAPER_RESEARCH_ACTIONS = new Set<ApiAction["action"]>([
+  "bootstrap", "experiment", "reset", "research_pass", "discover", "evaluate",
+  "paper_execute", "backtest", "mark",
+]);
+
+export function isMonitorOnly(): boolean {
+  return process.env.SENTINEL_MONITOR_ONLY === "true" ||
+    (process.env.NODE_ENV === "production" && process.env.SENTINEL_ENABLE_PAPER_RESEARCH !== "true");
+}
+
+export function paperResearchDenied(action?: ApiAction["action"]): { error: string; code: string } | null {
+  if (!action || !PAPER_RESEARCH_ACTIONS.has(action)) return null;
+  if (isMonitorOnly()) {
+    return { error: "This deployment is in monitor-only mode", code: "MONITOR_ONLY" };
+  }
+  if (action === "bootstrap" && process.env.NODE_ENV === "production" && process.env.DEMO_MODE !== "true") {
+    return { error: "Demo bootstrap requires DEMO_MODE=true", code: "DEMO_MODE_REQUIRED" };
+  }
+  return null;
+}
+
 export function allowedOrigins(): string[] {
   const extra = (process.env.SAT_ALLOWED_ORIGINS ?? "")
     .split(",")
@@ -95,26 +117,41 @@ export function originAllowed(origin: string | null, host: string): boolean {
 
 export function operatorAuthorized(req: Request): boolean {
   const token = process.env.SAT_API_TOKEN?.trim();
-  if (!token) return false;
-  return req.headers.get("authorization") === `Bearer ${token}`;
+  return Boolean(token) && req.headers.get("authorization") === `Bearer ${token}`;
 }
 
-export function mutatingRequestDenied(req: Request): { error: string; code: string } | null {
-  if (isPublicDemo() && !operatorAuthorized(req)) {
+export function productionAuthDenied(req: Request, operatorOnly = false): { error: string; code: string; status: number } | null {
+  if (process.env.NODE_ENV !== "production") return null;
+  if (!process.env.SAT_API_TOKEN?.trim() && (operatorOnly || parseApiKeys().length === 0)) {
+    return { error: "Production API credentials are not configured", code: "AUTH_UNAVAILABLE", status: 503 };
+  }
+  if (!operatorAuthorized(req) && (operatorOnly || !resolveApiPrincipal(req.headers.get("authorization")))) {
+    return { error: "API credential required", code: "UNAUTHORIZED", status: 401 };
+  }
+  return null;
+}
+
+export function mutatingRequestDenied(req: Request, action?: ApiAction["action"], scope: "operator" | "api" = "operator"): { error: string; code: string } | null {
+  const productionDenied = productionAuthDenied(req, scope === "operator");
+  if (productionDenied) return productionDenied;
+  const researchDenied = paperResearchDenied(action);
+  if (researchDenied) return researchDenied;
+  const localBootstrap = action === "bootstrap" && process.env.NODE_ENV !== "production" &&
+    !bindRequiresAuth() && originAllowed(req.headers.get("origin"), req.headers.get("host") ?? "");
+  if (isPublicDemo() && !operatorAuthorized(req) && !localBootstrap) {
     return {
       error: "Public demo is read-only. Authenticated operator token required to mutate.",
       code: "PUBLIC_DEMO_READONLY",
     };
   }
   if (bindRequiresAuth()) {
-    const token = process.env.SAT_API_TOKEN?.trim();
-    if (!token) {
+    if (!process.env.SAT_API_TOKEN?.trim() && (scope === "operator" || parseApiKeys().length === 0)) {
       return {
-        error: "SAT_API_TOKEN required when SAT_BIND_HOST is not loopback",
+        error: "API credential required when SAT_BIND_HOST is not loopback",
         code: "AUTH_REQUIRED",
       };
     }
-    if (!operatorAuthorized(req)) {
+    if (!operatorAuthorized(req) && (scope === "operator" || !resolveApiPrincipal(req.headers.get("authorization")))) {
       return { error: "Unauthorized", code: "UNAUTHORIZED" };
     }
   }

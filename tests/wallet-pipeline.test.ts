@@ -273,7 +273,8 @@ describe("lot accounting FIFO", () => {
 describe("signal determinism and safety", () => {
   it("identical inputs produce identical signal ids", () => {
     const asset = getDemoCandidates().find((c) => c.symbol === "JUP")!;
-    const wallets = listDemoWalletScores();
+    const wallets = listDemoWalletScores().map((w) => ({ ...w, assessedAt: "2025-12-31T23:59:00.000Z" }));
+    const walletFlowEvidence = [{ wallet: DEMO_WALLETS.SMART_B, mint: asset.mint, signature: "proof", side: "BUY" as const, qty: 1, timestamp: "2025-12-31T23:59:00.000Z", provider: "fixture", freshness: "DEMO" as const, isDemo: true }];
     const marketSignals = [
       { name: "momentum", value: 4, normalizedScore: 0.4, confidence: 0.8, source: "t", timestamp: "2026-01-01T00:00:00.000Z" },
       { name: "volume", value: 3, normalizedScore: 0.3, confidence: 0.7, source: "t", timestamp: "2026-01-01T00:00:00.000Z" },
@@ -283,6 +284,7 @@ describe("signal determinism and safety", () => {
       asset,
       marketSignals,
       wallets,
+      walletFlowEvidence,
       tokenRiskTier: "LOWER_RISK",
       tokenRiskScore: 20,
       asOf: "2026-01-01T00:00:00.000Z",
@@ -291,6 +293,7 @@ describe("signal determinism and safety", () => {
       asset,
       marketSignals,
       wallets,
+      walletFlowEvidence,
       tokenRiskTier: "LOWER_RISK",
       tokenRiskScore: 20,
       asOf: "2026-01-01T00:00:00.000Z",

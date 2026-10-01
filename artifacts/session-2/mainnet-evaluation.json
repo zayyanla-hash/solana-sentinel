@@ -1,0 +1,259 @@
+{
+  "schemaVersion": 1,
+  "evaluatedAt": "2026-10-01T04:59:44.998Z",
+  "scope": "13 captured public finalized transactions; fee-payer wallet perspective; no random sample or broad performance estimate",
+  "accuracy": null,
+  "warning": "One reviewed directional case; training regression evidence, not an independent holdout or broad accuracy estimate. Eight successful ambiguous cases excluded from directional metrics.",
+  "baseline": {
+    "outcomes": {
+      "CLASSIFIED": 0,
+      "UNKNOWN": 9,
+      "FAILED": 4
+    },
+    "total": 13,
+    "directionalPredictions": 0,
+    "reviewedDirectional": 1,
+    "correctDirectional": 0,
+    "falseBuy": 0,
+    "falseSell": 0,
+    "excludedDirectional": 0,
+    "precision": null,
+    "recall": 0,
+    "abstentionRate": 0.6923076923076923
+  },
+  "current": {
+    "outcomes": {
+      "CLASSIFIED": 1,
+      "UNKNOWN": 8,
+      "FAILED": 4
+    },
+    "total": 13,
+    "directionalPredictions": 1,
+    "reviewedDirectional": 1,
+    "correctDirectional": 1,
+    "falseBuy": 0,
+    "falseSell": 0,
+    "excludedDirectional": 0,
+    "precision": 1,
+    "recall": 1,
+    "abstentionRate": 0.6153846153846154
+  },
+  "predictions": [
+    {
+      "signature": "58WkTRFjD2a6t4ULsECNR4WXuSgNhELgujVGHNvTFB1s1Avdpv2ad9RwW3Xfnw1SoQA2QahYHLdNyDWCBRRK78up",
+      "wallet": "77777nPhGvFUVAj6uq8MGyLneBt4SMwCScYZDzzztdsa",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452174598,
+        "blockTime": 1790827537,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions"
+      }
+    },
+    {
+      "signature": "3oVfkXAghkdE4dHAyJL9e4cxRMWWhjtBKdGHtTzS7ZFYyiK48P5jySx2gAsDmRtm7SFZk5uBbHE8f2odzayXLsZb",
+      "wallet": "CK5nCzuNAmKP6Bkh4rfFrj47Vgx46TtYjeUwZNSkn3Qs",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452174598,
+        "blockTime": 1790827537,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions"
+      }
+    },
+    {
+      "signature": "31nWgoSACaQKTNe5bUYsomXCBRV3sKKqzA1Q6nKoEiRFud2NXnJk3NGaUck2zQaRQkr349TZJ2SHMe6rXLkbJPCE",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "HMjK2dcF8NdCB8SDfSjBcHHBEAut97XfPVaNLdfKpump",
+        "qty": 48537.487223
+      },
+      "includeInPrecision": true,
+      "predicted": {
+        "slot": 452174598,
+        "blockTime": 1790827537,
+        "trades": [
+          {
+            "signature": "e70746c217d3fa3402ef5f662f6df4160e2e0396f8921f42013af4040cf631fb",
+            "timestamp": "2026-10-01T04:05:37.000Z",
+            "mint": "HMjK2dcF8NdCB8SDfSjBcHHBEAut97XfPVaNLdfKpump",
+            "side": "SELL",
+            "usdNotional": 0,
+            "qty": 48537.487223,
+            "priceUsd": null,
+            "tokenAgeHoursAtEntry": null,
+            "liquidityUsdAtEntry": null,
+            "slippageBps": null,
+            "isDemo": false,
+            "sourceSignature": "31nWgoSACaQKTNe5bUYsomXCBRV3sKKqzA1Q6nKoEiRFud2NXnJk3NGaUck2zQaRQkr349TZJ2SHMe6rXLkbJPCE",
+            "provider": "solana-finalized-rpc-v1",
+            "classificationConfidence": 0.8,
+            "costBasis": "UNPRICED"
+          }
+        ],
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-sell-closed-wsol"
+      }
+    },
+    {
+      "signature": "3B9UCxyesFNaPu71zMaLt1oeViLZf2uYQAQDXTwZMwo2i8MkHMCiE7tGgdmKqfZHcYrnQ582nHtUKdVJo7ffLDk5",
+      "wallet": "Eq4tzA38NmPR2R9wVmMVAxgm7XCidnkGo8U7gFGTeSQY",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452174598,
+        "blockTime": 1790827537,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions"
+      }
+    },
+    {
+      "signature": "2voQzRH6b3wVdAQqedTskzVvhP8CcwGSnC52EDYKGSHEGzwUHA9WHpckE5vb14gb6cHVFNRwZ3xpHruRtSdSfXYG",
+      "wallet": "77777nPhGvFUVAj6uq8MGyLneBt4SMwCScYZDzzztdsa",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452174598,
+        "blockTime": 1790827537,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions"
+      }
+    },
+    {
+      "signature": "3be6ZfQmqayVNuugGtVNviZR8KBoy9zgmrbz8NUejqEWF6er5k1F6dpAtmxNQ3gZjDQ6XCZSkXdGZ5gaxKrpQDEx",
+      "wallet": "gasBidSWW5zmwXs3gn8TG2ijzKkrwpyM7ucwjgDQst6",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177794,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-jupiter-instruction"
+      }
+    },
+    {
+      "signature": "4SAvk8Y7Y4Uw1T5fd6YAwMT4sYh5xBMyzQBgVnaZHUvMteKcCnBaioDiFJpFKWFEkNGTVMNsJ4g8jmKeNYXNdN1g",
+      "wallet": "4rx2NubDwDPE2r821nmnmXQuSz78di75UNFWX3zQBtGo",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177794,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions"
+      }
+    },
+    {
+      "signature": "NWm6pKAabtWjQ9rKMS114SSB2DoAW2ah7Bjpby8LGZYeo5G8cT98KYccdViQEYVGU7XEP1xDAXdG8zPxs5XnVjk",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177793,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "FAILED",
+        "reason": "onchain-failed"
+      }
+    },
+    {
+      "signature": "y4CMCKdhsKCG9wL91z8D1wJE8cF3MqYV7oc9XToy4UfZdN5qURLBZ8tu9NicVdf7n9ztTvNN15TE7pDg9BEvdKB",
+      "wallet": "MenuxY5yMzJkeKZTvDTcovjh4fuJHMHhJyjJ5v5LzG6",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177793,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions"
+      }
+    },
+    {
+      "signature": "X4mPTX8fLCR2CWh4muw8LYtVYjBx3gpmE3nRgdG4wzGqMSApkVW8D2LBmPKm89X5s4S841aFAYphoJuHF9EUgzR",
+      "wallet": "GxDC9e7SP9mzhDo4re5HbpLa2RW7gB9DtmThx4i4pXSq",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177793,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions"
+      }
+    },
+    {
+      "signature": "4SDf1sd6kquEyZiYdcQmKa2GqBEiSPeyWJVqm8Cthie4ykoAXzVVjZm4dJH57zFZm9cJ4QQ1HMwHh4woWND8rV4K",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177793,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "FAILED",
+        "reason": "onchain-failed"
+      }
+    },
+    {
+      "signature": "66HEMqqZnbE1ETFpxiEGWrxY9Goio9qo7E47vaGVDpfWbB54KZWiWURcrmfxQUVFJoJe6SfxYRk7fjXRyh1z96Ge",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177793,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "FAILED",
+        "reason": "onchain-failed"
+      }
+    },
+    {
+      "signature": "31doDxj7cdyGac2N3gDZePKhi6Z7hauJ2etUYKh8xGj1KDDh68mJuPgiYBzruXNF7RX7icjFwipPSFjw7XpM7F9r",
+      "wallet": "En3NPq8o9Cynf1Q3eP69AqZmPKmBaDugYnE832o2YuzP",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "includeInPrecision": false,
+      "predicted": {
+        "slot": 452177793,
+        "blockTime": 1790828387,
+        "trades": [],
+        "outcome": "FAILED",
+        "reason": "onchain-failed"
+      }
+    }
+  ]
+}

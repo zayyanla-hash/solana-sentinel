@@ -47,11 +47,14 @@ export {
   createAlertRule,
   emitTestAlert,
   getAlertEngine,
+  getPersistentAlertEngine,
   resetIntelligenceForTests,
   addWatchlistItem,
   removeWatchlistItem,
   portfolioRiskSnapshot,
 } from "./intelligence";
+export { PollingMonitor, persistMonitorScore, dispatchPendingTradeAlerts, type MonitorReader, type PollResult } from "./monitor";
+export { ReadOnlyRpcReader } from "@sat/solana";
 export { verifyLiveWallet, compareWalletProviders } from "./verify-wallet";
 export {
   decideProposalStatus,

@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "scope": "built production dashboard with private PostgreSQL journal",
+  "checks": [
+    "anonymous sign-in required",
+    "password input masked",
+    "operator sign-in",
+    "monitor-only controls",
+    "stopped worker shown degraded",
+    "two tracked live alert rules created",
+    "operator sign-out"
+  ],
+  "mainnetAlertDeliveryClaimed": false
+}

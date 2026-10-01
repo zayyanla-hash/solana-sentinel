@@ -21,7 +21,6 @@ import { assessTokenRisk } from "@sat/token-risk";
 import { getProviders } from "@sat/pipeline";
 import {
   entitlementsFor,
-  parseTier,
   parseApiKeys,
   resolveApiPrincipal,
   consumeQuota,
@@ -32,7 +31,7 @@ import {
 } from "@sat/pipeline";
 import { rateLimitAllow, requestId, getAnalytics, recordUsage } from "@sat/observability";
 import { DEMO_WALLETS } from "@sat/wallet-intel";
-import { mutatingRequestDenied } from "@/lib/request-guard";
+import { mutatingRequestDenied, productionAuthDenied, operatorAuthorized } from "@/lib/request-guard";
 
 export function apiError(error: string, code: string, status: number, rid: string) {
   return NextResponse.json(
@@ -49,18 +48,27 @@ export function apiOk(data: unknown, rid: string, extra?: Record<string, unknown
 }
 
 export async function handleV1(req: Request, path: string[]): Promise<NextResponse> {
-  const rid = req.headers.get("x-request-id") ?? requestId();
-  const ip = req.headers.get("x-forwarded-for") ?? "local";
-  if (!rateLimitAllow(`v1:${ip}`, 120, 2)) {
+  const rid = requestId();
+  const [a, b, c] = path;
+  const authDenied = productionAuthDenied(req);
+  if (authDenied && !(a === "health" && !b)) {
+    return apiError(authDenied.error, authDenied.code, authDenied.status, rid);
+  }
+  const keysConfigured = parseApiKeys().length > 0;
+  const principal = resolveApiPrincipal(req.headers.get("authorization"));
+  if (keysConfigured && !principal && !operatorAuthorized(req) && !(a === "health" && !b)) {
+    return apiError("API key required", "API_KEY_REQUIRED", 401, rid);
+  }
+  // The application does not have an authenticated proxy identity. Never key on
+  // client-supplied forwarding headers or let them choose their entitlement.
+  const subject = principal?.keyId ?? (operatorAuthorized(req) ? "operator" : "anonymous-local");
+  if (!rateLimitAllow(`v1:${subject}`, 120, 2)) {
     return apiError("Rate limit exceeded", "RATE_LIMITED", 429, rid);
   }
-  recordUsage({ subject: ip, action: path.join("/"), units: 1, estimatedCostUsd: 0, provider: "sentinel-api" });
+  recordUsage({ subject, action: path.join("/"), units: 1, estimatedCostUsd: 0, provider: "sentinel-api" });
   getAnalytics().track("api_used", { path: path.join("/") });
 
   const db = getDatabase();
-  const keysConfigured = parseApiKeys().length > 0;
-  const principal = resolveApiPrincipal(req.headers.get("authorization"));
-  const [a, b, c] = path;
 
   try {
     if (a === "health" && !b) {
@@ -76,14 +84,21 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
       );
     }
 
-    if (keysConfigured && !principal) {
-      return apiError("API key required", "API_KEY_REQUIRED", 401, rid);
-    }
-    const tier = principal?.tier ?? parseTier(req.headers.get("x-sentinel-tier"));
+    const tier = principal?.tier ?? "FREE";
     const entitlements = entitlementsFor(tier);
-    const quota = consumeQuota(principal?.keyId ?? `ip:${ip}`, entitlements.apiQuotaPerDay);
+    const quota = consumeQuota(subject, entitlements.apiQuotaPerDay);
     if (!quota.ok) {
       return apiError("Daily API quota exceeded", "QUOTA_EXCEEDED", 429, rid);
+    }
+
+    if (req.method === "POST") {
+      const action = a === "evaluate" ? "evaluate" : a === "backtests" ? "backtest" : undefined;
+      const denied = mutatingRequestDenied(req, action, "api");
+      if (denied) {
+        const status = denied.code === "AUTH_UNAVAILABLE" ? 503
+          : denied.code === "UNAUTHORIZED" || denied.code === "AUTH_REQUIRED" ? 401 : 403;
+        return apiError(denied.error, denied.code, status, rid);
+      }
     }
 
     if (a === "entitlements" && !b) {
@@ -120,12 +135,13 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
     }
 
     if (a === "signals" && !b) {
-      const signals = await generateSmartMoneySignals(db);
+      const signals = req.method === "POST" ? await generateSmartMoneySignals(db) : (await db.getState()).sentinelSignals;
       return apiOk({ signals }, rid);
     }
 
     if (a === "wallets" && !b) {
-      return apiOk({ wallets: await listWalletIntelligence(), demoAddresses: DEMO_WALLETS }, rid);
+      const wallets = req.method === "POST" ? await listWalletIntelligence(db) : (await db.getState()).walletScores;
+      return apiOk({ wallets, demoAddresses: DEMO_WALLETS }, rid);
     }
 
     if (a === "wallets" && b === "graph") {
@@ -138,8 +154,11 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
     if (a === "wallet" && b) {
       const parsed = SolanaAddressSchema.safeParse(b);
       if (!parsed.success) return apiError("Invalid wallet", "INVALID_ADDRESS", 400, rid);
-      getAnalytics().track("wallet_analyzed", { wallet: b });
-      const score = await analyzeWallet(parsed.data);
+      if (req.method === "POST") getAnalytics().track("wallet_analyzed", { wallet: b });
+      const score = req.method === "POST"
+        ? await analyzeWallet(parsed.data, db)
+        : (await db.getState()).walletScores.find((item) => item.address === parsed.data);
+      if (!score) return apiError("Wallet score has not been analyzed", "NOT_FOUND", 404, rid);
       if (c === "score" || !c) return apiOk({ score }, rid);
       if (c === "activity") {
         return apiOk({ score, sampleSize: score.sampleSize, freshness: score.dataFreshness }, rid);
@@ -152,15 +171,15 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
       if (!parsed.success) return apiError("Invalid mint", "INVALID_ADDRESS", 400, rid);
       getAnalytics().track("token_analyzed", { mint: b });
       const state = await db.getState();
+      if (c === "signals") {
+        const all = req.method === "POST" ? await generateSmartMoneySignals(db) : state.sentinelSignals;
+        return apiOk({ signals: all.filter((s) => s.asset === parsed.data) }, rid);
+      }
       const asset = state.candidates.find((x) => x.mint === parsed.data);
       const { onchain } = getProviders();
       const on = await onchain.getTokenRiskInputs(parsed.data);
       const risk = asset ? assessTokenRisk(asset, on) : null;
       if (c === "risk") return apiOk({ risk, provider: onchain.name, isDemo: onchain.isDemo }, rid);
-      if (c === "signals") {
-        const all = await generateSmartMoneySignals(db);
-        return apiOk({ signals: all.filter((s) => s.asset === parsed.data) }, rid);
-      }
       return apiOk(
         {
           asset: asset ?? null,
@@ -169,13 +188,6 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
         },
         rid,
       );
-    }
-
-    if (req.method === "POST") {
-      const denied = mutatingRequestDenied(req);
-      if (denied) {
-        return apiError(denied.error, denied.code, denied.code === "UNAUTHORIZED" || denied.code === "AUTH_REQUIRED" ? 401 : 403, rid);
-      }
     }
 
     if (a === "backtests" && req.method === "POST") {
@@ -192,6 +204,11 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
       const result = await runStrategyLab({ mint, config: parsedCfg.data, walkForward: true, db });
       getAnalytics().track("backtest_completed", { id: result.id });
       return apiOk({ backtest: result }, rid);
+    }
+
+    if (a === "alerts" && req.method === "GET") {
+      const state = await db.getState();
+      return apiOk({ rules: state.alertRules, events: state.alertEvents.slice(0, 50) }, rid);
     }
 
     if (a === "alerts" && req.method === "POST") {
@@ -218,7 +235,7 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
         })
         .safeParse(body);
       if (!parsed.success) return apiError("Invalid alert rule", "INVALID_ALERT", 400, rid);
-      const rule = createAlertRule(parsed.data);
+      const rule = await createAlertRule(parsed.data);
       getAnalytics().track("alert_created", { id: rule.id });
       return apiOk({ rule }, rid);
     }
@@ -239,7 +256,7 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
       return apiOk({ risk: await portfolioRiskSnapshot(db), liveTradingAllowed: false }, rid);
     }
 
-    if (a === "evaluate" && b) {
+    if (a === "evaluate" && b && req.method === "POST") {
       const parsed = SolanaAddressSchema.safeParse(b);
       if (!parsed.success) return apiError("Invalid mint", "INVALID_ADDRESS", 400, rid);
       const proposal = await evaluateMint(parsed.data, db);
@@ -251,4 +268,3 @@ export async function handleV1(req: Request, path: string[]): Promise<NextRespon
     return apiError(err instanceof Error ? err.message : String(err), "INTERNAL", 500, rid);
   }
 }
-

@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { type EntitlementTier, type Entitlements } from "@sat/shared";
 
 export type { EntitlementTier, Entitlements };
@@ -114,18 +114,26 @@ export function resolveApiPrincipal(authorization: string | null | undefined): A
   if (!token) return null;
   for (const row of parseApiKeys()) {
     if (timingEqual(token, row.secret)) {
-      return { keyId: `key_${row.tier.toLowerCase()}_${row.secret.slice(0, 4)}`, tier: row.tier };
+      return { keyId: `key_${createHash("sha256").update(row.secret).digest("hex").slice(0, 24)}`, tier: row.tier };
     }
   }
   return null;
 }
 
+// Local safety bound only. Multi-instance deployments need an atomic shared quota store.
 const dailyCounts = new Map<string, { day: string; used: number }>();
+const MAX_QUOTA_SUBJECTS = 10_000;
 
 export function consumeQuota(subject: string, limit: number): { ok: boolean; used: number; remaining: number } {
   const day = new Date().toISOString().slice(0, 10);
+  if (dailyCounts.size >= MAX_QUOTA_SUBJECTS) {
+    for (const [key, value] of dailyCounts) {
+      if (value.day !== day) dailyCounts.delete(key);
+    }
+  }
   const cur = dailyCounts.get(subject);
   const used = cur && cur.day === day ? cur.used : 0;
+  if (!cur && dailyCounts.size >= MAX_QUOTA_SUBJECTS) return { ok: false, used: 0, remaining: 0 };
   if (used >= limit) return { ok: false, used, remaining: 0 };
   const next = used + 1;
   dailyCounts.set(subject, { day, used: next });

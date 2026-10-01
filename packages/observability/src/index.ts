@@ -79,9 +79,19 @@ export function overallStatus(parts: ProviderHealth[]): HealthStatus {
 }
 
 const buckets = new Map<string, { tokens: number; updatedAt: number }>();
+const MAX_BUCKETS = 10_000;
+const BUCKET_IDLE_MS = 60 * 60_000;
 
 export function rateLimitAllow(key: string, capacity = 60, refillPerSec = 1): boolean {
   const now = Date.now();
+  if (!buckets.has(key) && buckets.size >= MAX_BUCKETS) {
+    for (const [subject, bucket] of buckets) {
+      if (now - bucket.updatedAt > BUCKET_IDLE_MS) buckets.delete(subject);
+    }
+    // Fail closed when every tracked subject is active. Distributed deployments
+    // need a shared limiter; this bound protects only one process.
+    if (buckets.size >= MAX_BUCKETS) return false;
+  }
   const cur = buckets.get(key) ?? { tokens: capacity, updatedAt: now };
   const elapsed = (now - cur.updatedAt) / 1000;
   cur.tokens = Math.min(capacity, cur.tokens + elapsed * refillPerSec);
@@ -123,6 +133,7 @@ class MemoryAnalytics implements AnalyticsProvider {
   readonly events: Array<{ event: ProductEventName; props?: Record<string, unknown>; at: string }> = [];
   track(event: ProductEventName, props?: Record<string, unknown>): void {
     this.events.push({ event, props, at: nowIso() });
+    if (this.events.length > 1000) this.events.splice(0, this.events.length - 1000);
     logEvent({ level: "info", msg: `analytics:${event}` });
   }
 }

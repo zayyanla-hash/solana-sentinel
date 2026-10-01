@@ -179,8 +179,11 @@ describe("InMemoryDatabase", () => {
 
 // Never reset the application's DATABASE_URL. Opt in with a disposable test database.
 const PG_URL = process.env.SENTINEL_TEST_DATABASE_URL?.trim();
+const pgTestUrl = PG_URL ? new URL(PG_URL) : null;
+const localDisposablePg = !!pgTestUrl && ["localhost", "127.0.0.1", "[::1]"].includes(pgTestUrl.hostname)
+  && /test/i.test(decodeURIComponent(pgTestUrl.pathname));
 
-describe.skipIf(!PG_URL)("PostgresDatabase", () => {
+describe.skipIf(!localDisposablePg)("PostgresDatabase", () => {
   beforeEach(async () => {
     const db = new PostgresDatabase(PG_URL!, 25_000);
     try { await db.reset(25_000); } finally { await db.close(); }

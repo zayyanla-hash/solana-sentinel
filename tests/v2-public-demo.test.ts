@@ -11,6 +11,8 @@ describe("V2 public demo and provider honesty", () => {
     PUBLIC_DEMO: process.env.PUBLIC_DEMO,
     SAT_API_TOKEN: process.env.SAT_API_TOKEN,
     SAT_BIND_HOST: process.env.SAT_BIND_HOST,
+    DATABASE_SSL: process.env.DATABASE_SSL,
+    DATABASE_SSL_REJECT_UNAUTHORIZED: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED,
   };
 
   afterEach(() => {
@@ -94,11 +96,25 @@ describe("V2 public demo and provider honesty", () => {
     }
   });
 
-  it("hosted DATABASE_URL enables TLS; local does not", () => {
+  it("remote DATABASE_URL verifies TLS; local stays plaintext unless configured", () => {
+    delete process.env.DATABASE_SSL;
+    delete process.env.DATABASE_SSL_REJECT_UNAUTHORIZED;
     const hosted = buildPoolConfig("postgres://user:pass@db.xxx.supabase.co:5432/postgres");
-    expect(hosted.ssl).toEqual({ rejectUnauthorized: false });
+    expect(hosted.ssl).toEqual({ rejectUnauthorized: true });
+    const remote = buildPoolConfig("postgres://user:pass@db.example.com:5432/postgres");
+    expect(remote.ssl).toEqual({ rejectUnauthorized: true });
+    const required = buildPoolConfig("postgres://user:pass@db.example.com:5432/postgres?sslmode=require");
+    expect(required.ssl).toEqual({ rejectUnauthorized: true });
+    expect(required.connectionString).not.toContain("sslmode=");
     const local = buildPoolConfig("postgres://sat:sat@127.0.0.1:5432/sat_test");
     expect(local.ssl).toBeUndefined();
+    expect(() => buildPoolConfig("postgres://user:pass@db.example.com:5432/postgres?sslmode=disable"))
+      .toThrow("DATABASE_TLS_REQUIRED");
+    expect(() => buildPoolConfig("postgres://user:pass@db.example.com:5432/postgres?sslmode=no-verify"))
+      .toThrow("DATABASE_TLS_VERIFICATION_REQUIRED");
+    process.env.DATABASE_SSL_REJECT_UNAUTHORIZED = "false";
+    expect(buildPoolConfig("postgres://user:pass@db.example.com:5432/postgres?sslmode=require").ssl)
+      .toEqual({ rejectUnauthorized: false });
   });
 
   it("isPublicDemo reads env honestly", () => {

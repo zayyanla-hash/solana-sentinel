@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "tables": 21,
+  "rowsByTable": {
+    "sat_alert_cooldowns": 0,
+    "sat_alert_event_facts": 0,
+    "sat_candidates": 0,
+    "sat_chain_observations": 53,
+    "sat_chain_trades": 0,
+    "sat_equity": 1,
+    "sat_events": 0,
+    "sat_experiments": 0,
+    "sat_ingestion_wallets": 1,
+    "sat_meta": 2,
+    "sat_orders": 0,
+    "sat_policies": 0,
+    "sat_portfolio": 1,
+    "sat_positions": 0,
+    "sat_proposals": 0,
+    "sat_research": 0,
+    "sat_schema_version": 1,
+    "sat_scores": 0,
+    "sat_signals": 0,
+    "sat_token_risk": 0,
+    "sat_trade_alert_outbox": 0
+  },
+  "allRowHashesMatch": true,
+  "scope": "quiescent local staging; disposable restore"
+}

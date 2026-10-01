@@ -50,6 +50,41 @@ export const WalletTradeSchema = z.object({
 });
 export type WalletTrade = z.infer<typeof WalletTradeSchema>;
 
+function isFullTransactionSignature(signature: string): boolean {
+  const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  if (signature.length < 64 || signature.length > 88) return false;
+  let number = 0n;
+  for (const character of signature) {
+    const digit = alphabet.indexOf(character);
+    if (digit < 0) return false;
+    number = number * 58n + BigInt(digit);
+  }
+  let bytes = 0;
+  while (number > 0n) {
+    bytes++;
+    number >>= 8n;
+  }
+  const leadingZeros = signature.match(/^1*/)?.[0].length ?? 0;
+  return bytes + leadingZeros === 64;
+}
+
+/** A dated, asset-specific trade observation. Credibility scores alone are not flow evidence. */
+export const WalletFlowEvidenceSchema = z.object({
+  wallet: SolanaAddressSchema,
+  mint: SolanaAddressSchema,
+  signature: z.string().min(1).max(128),
+  side: z.enum(["BUY", "SELL"]),
+  qty: z.number().finite().positive(),
+  timestamp: z.string().datetime(),
+  provider: z.string().min(1),
+  freshness: z.enum(["FRESH", "STALE", "INSUFFICIENT", "DEMO"]),
+  isDemo: z.boolean(),
+}).refine((flow) => flow.isDemo || isFullTransactionSignature(flow.signature), {
+  message: "Live wallet flow requires a full base58 transaction signature",
+  path: ["signature"],
+});
+export type WalletFlowEvidence = z.infer<typeof WalletFlowEvidenceSchema>;
+
 export const WalletPerformanceSchema = z.object({
   realizedPnlUsd: z.number().nullable(),
   unrealizedPnlUsd: z.number().nullable(),
@@ -162,6 +197,7 @@ export const SentinelSignalSchema = z.object({
   score: z.number().min(0).max(100),
   confidence: z.number().min(0).max(1),
   walletEvidence: z.array(z.string()),
+  walletFlowEvidence: z.array(WalletFlowEvidenceSchema).default([]),
   marketEvidence: z.array(z.string()),
   tokenRisk: z.string(),
   liquidityRisk: z.string(),

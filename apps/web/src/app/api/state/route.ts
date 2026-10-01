@@ -18,8 +18,7 @@ import {
   removeWatchlistItem,
   portfolioRiskSnapshot,
 } from "@sat/pipeline";
-import { ActionSchema, mutatingRequestDenied } from "@/lib/request-guard";
-import { isPublicDemo } from "@sat/shared";
+import { ActionSchema, isMonitorOnly, mutatingRequestDenied, productionAuthDenied } from "@/lib/request-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,34 +27,28 @@ function jsonError(error: string, code: string, status: number) {
   return NextResponse.json({ error, code }, { status });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const denied = productionAuthDenied(req, true);
+  if (denied) return NextResponse.json({ error: denied.error, code: denied.code }, { status: denied.status });
   const db = getDatabase();
-  let state = await db.getState();
-  if (isPublicDemo() && state.candidates.length === 0) {
-    await runFullResearchPass(db);
-    if ((await db.getState()).experiments.length === 0) await runDemoExperiment(db);
-    state = await db.getState();
-  }
+  const state = await db.getState();
   return NextResponse.json({
     ...state,
     health: await getSystemHealth(db),
     operatingMode: getOperatingMode(),
-    wallets: await listWalletIntelligence(db),
-    sentinelSignals:
-      state.sentinelSignals.length > 0
-        ? state.sentinelSignals
-        : await generateSmartMoneySignals(db).catch(() => []),
+    monitorOnly: isMonitorOnly(),
+    wallets: state.walletScores,
+    sentinelSignals: state.sentinelSignals,
+    alertRules: state.alertRules,
+    alertEvents: state.alertEvents,
     portfolioRisk: await portfolioRiskSnapshot(db),
   });
 }
 
 export async function POST(req: Request) {
-  const denied = mutatingRequestDenied(req);
-  if (denied) {
-    return NextResponse.json(denied, { status: denied.code === "UNAUTHORIZED" || denied.code === "AUTH_REQUIRED" ? 401 : 403 });
-  }
+  const productionDenied = productionAuthDenied(req, true);
+  if (productionDenied) return NextResponse.json(productionDenied, { status: productionDenied.status });
 
-  const db = getDatabase();
   let raw: unknown;
   try {
     raw = await req.json();
@@ -67,6 +60,13 @@ export async function POST(req: Request) {
     return jsonError(parsed.error.issues[0]?.message ?? "Invalid action", "INVALID_ACTION", 400);
   }
   const body = parsed.data;
+  const denied = mutatingRequestDenied(req, body.action);
+  if (denied) {
+    const status = denied.code === "AUTH_UNAVAILABLE" ? 503
+      : denied.code === "UNAUTHORIZED" || denied.code === "AUTH_REQUIRED" ? 401 : 403;
+    return NextResponse.json(denied, { status });
+  }
+  const db = getDatabase();
 
   try {
     switch (body.action) {
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
         });
       case "alert_create":
         return NextResponse.json({
-          rule: createAlertRule({
+          rule: await createAlertRule({
             name: body.name,
             trigger: body.trigger,
             threshold: body.threshold ?? null,

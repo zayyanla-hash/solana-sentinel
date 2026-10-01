@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createMarketDataProvider } from "@sat/market-data";
 import { type OhlcvInterval } from "@sat/shared";
+import { productionAuthDenied } from "@/lib/request-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 const VALID_INTERVALS: OhlcvInterval[] = ["1m", "5m", "15m", "1h", "4h"];
 
 export async function GET(req: Request) {
+  const denied = productionAuthDenied(req);
+  if (denied) return NextResponse.json({ error: denied.error, code: denied.code }, { status: denied.status });
   const { searchParams } = new URL(req.url);
   const mint = searchParams.get("mint");
   if (!mint) {

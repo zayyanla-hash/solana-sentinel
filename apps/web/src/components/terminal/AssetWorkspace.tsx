@@ -12,6 +12,7 @@ interface AssetWorkspaceProps {
   pending: boolean;
   onPaperExecute: (proposalId: string) => void;
   onEvaluate: (mint: string) => void;
+  apiToken?: string;
 }
 
 export function AssetWorkspace({
@@ -21,6 +22,7 @@ export function AssetWorkspace({
   pending,
   onPaperExecute,
   onEvaluate,
+  apiToken,
 }: AssetWorkspaceProps) {
   const [copied, setCopied] = useState(false);
 
@@ -164,6 +166,7 @@ export function AssetWorkspace({
         symbol={candidate.symbol}
         currentPrice={candidate.priceUsd}
         isDemoAsset={candidate.isDemo}
+        apiToken={apiToken}
       />
 
       {/* Quantitative Signal Decomposition Matrix */}

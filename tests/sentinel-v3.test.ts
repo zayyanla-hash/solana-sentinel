@@ -279,6 +279,11 @@ describe("sentinel signals", () => {
         },
       ],
       wallets,
+      walletFlowEvidence: [{
+        wallet: DEMO_WALLETS.SMART_B, mint: asset.mint, signature: "smb15",
+        side: "BUY", qty: 1, timestamp: new Date(Date.now() - 60_000).toISOString(),
+        provider: "demo-wallet-history", freshness: "DEMO", isDemo: true,
+      }],
       tokenRiskTier: "LOWER_RISK",
       tokenRiskScore: 20,
     });
@@ -394,6 +399,11 @@ describe("watchlist, analogues, wallet history, portfolio limits", () => {
         },
       ],
       wallets,
+      walletFlowEvidence: [{
+        wallet: DEMO_WALLETS.SMART_B, mint: asset.mint, signature: "smb15",
+        side: "BUY", qty: 1, timestamp: new Date(Date.now() - 60_000).toISOString(),
+        provider: "demo-wallet-history", freshness: "DEMO", isDemo: true,
+      }],
       tokenRiskTier: "LOWER_RISK",
       tokenRiskScore: 20,
     });

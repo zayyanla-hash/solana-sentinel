@@ -9,9 +9,10 @@ interface MarketChartProps {
   symbol: string;
   currentPrice: number | null;
   isDemoAsset?: boolean;
+  apiToken?: string;
 }
 
-export function MarketChart({ mint, symbol, currentPrice, isDemoAsset = true }: MarketChartProps) {
+export function MarketChart({ mint, symbol, currentPrice, isDemoAsset = true, apiToken = "" }: MarketChartProps) {
   const [interval, setInterval] = useState<OhlcvInterval>("5m");
   const [chartType, setChartType] = useState<"candle" | "line">("candle");
   const [bars, setBars] = useState<OhlcvBar[]>([]);
@@ -22,7 +23,9 @@ export function MarketChart({ mint, symbol, currentPrice, isDemoAsset = true }: 
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/ohlcv?mint=${encodeURIComponent(mint)}&interval=${interval}&limit=60`)
+    fetch(`/api/ohlcv?mint=${encodeURIComponent(mint)}&interval=${interval}&limit=60`, {
+      headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {},
+    })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("fetch failed"))))
       .then((data) => {
         if (!active) return;
@@ -42,7 +45,7 @@ export function MarketChart({ mint, symbol, currentPrice, isDemoAsset = true }: 
     return () => {
       active = false;
     };
-  }, [mint, interval]);
+  }, [mint, interval, apiToken]);
 
   // Dimensions
   const width = 680;

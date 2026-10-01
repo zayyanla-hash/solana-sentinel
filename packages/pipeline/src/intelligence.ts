@@ -4,12 +4,16 @@ import {
   type SentinelSignal,
   type StrategyLabConfig,
   type WalletCredibilityScore,
+  type WalletFlowEvidence,
+  type WalletTrade,
   type WatchlistItem,
   DEFAULT_STRATEGY_LAB_CONFIG,
   DEFAULT_RISK_CONFIG,
   newId,
   nowIso,
   SolanaAddressSchema,
+  AlertRuleSchema,
+  WSOL,
 } from "@sat/shared";
 import { getDatabase, type Database } from "@sat/database";
 import { buildDemoOhlcv } from "@sat/market-data";
@@ -32,21 +36,45 @@ import type { Entitlements } from "@sat/shared";
 import { getProviders } from "./providers";
 
 let alerts: AlertEngine | null = null;
+let persistentAlerts = new WeakMap<Database, Promise<AlertEngine>>();
 
 export function getAlertEngine(): AlertEngine {
   if (!alerts) alerts = createDefaultAlertEngine();
   return alerts;
 }
 
+export async function getPersistentAlertEngine(db: Database = getDatabase()): Promise<AlertEngine> {
+  let pending = persistentAlerts.get(db);
+  if (!pending) {
+    pending = (async () => {
+      const state = await db.getState();
+      const engine = createDefaultAlertEngine();
+      engine.restoreRules(state.alertRules);
+      engine.restoreHistory(state.alertEvents);
+      engine.setEventRecorder((event, cooldown) => db.recordAlertEvent(event, cooldown));
+      return engine;
+    })();
+    persistentAlerts.set(db, pending);
+    pending.catch(() => { if (persistentAlerts.get(db) === pending) persistentAlerts.delete(db); });
+  }
+  const engine = await pending;
+  engine.restoreRules((await db.getState()).alertRules);
+  return engine;
+}
+
 export function resetIntelligenceForTests(): void {
   alerts = null;
+  persistentAlerts = new WeakMap();
 }
 
 export async function listWalletIntelligence(
   db: Database = getDatabase(),
 ): Promise<WalletCredibilityScore[]> {
-  const stored = (await db.getState()).walletScores;
+  const state = await db.getState();
+  const liveOnly = state.candidates.length > 0 && state.candidates.every((c) => !c.isDemo);
+  const stored = liveOnly ? state.walletScores.filter((s) => !s.isDemo) : state.walletScores;
   if (stored.length) return stored;
+  if (!getProviders().walletHistory.isDemo || state.candidates.some((c) => !c.isDemo)) return [];
   const scores = listDemoWalletScores();
   await db.setWalletScores(scores);
   return scores;
@@ -58,22 +86,28 @@ export async function analyzeWallet(
   opts: { live?: boolean } = {},
 ): Promise<WalletCredibilityScore> {
   const demo = Object.values(DEMO_WALLETS) as string[];
-  if (!opts.live && demo.includes(address)) {
+  const state = await db.getState();
+  const liveOnly = state.candidates.length > 0 && state.candidates.every((c) => !c.isDemo);
+  if (!opts.live && !liveOnly && demo.includes(address)) {
     const score = analyzeDemoWallet(address);
-    const state = await db.getState();
-    await db.setWalletScores([score, ...state.walletScores.filter((s) => s.address !== address)]);
+    await db.upsertWalletScore(score);
     return score;
   }
   const { walletHistory } = getProviders();
+  if ((opts.live || liveOnly) && walletHistory.isDemo) {
+    throw new Error("LIVE_WALLET_HISTORY_UNAVAILABLE — demo history cannot support live analysis");
+  }
   const history = await walletHistory.getTrades(address);
+  if ((opts.live || liveOnly) && history.isDemo) {
+    throw new Error("LIVE_WALLET_HISTORY_UNAVAILABLE — provider returned demo history");
+  }
   const score = scoreWallet({
     address,
     trades: history.trades,
     isDemo: history.isDemo,
     dataFreshness: history.freshness,
   });
-  const state = await db.getState();
-  await db.setWalletScores([score, ...state.walletScores.filter((s) => s.address !== address)]);
+  await db.upsertWalletScore(score);
   return score;
 }
 
@@ -85,20 +119,49 @@ export async function walletGraphForDemo() {
 export async function generateSmartMoneySignals(
   db: Database = getDatabase(),
 ): Promise<SentinelSignal[]> {
-  const { onchain } = getProviders();
+  const { onchain, walletHistory } = getProviders();
   const state = await db.getState();
   const wallets = await listWalletIntelligence(db);
   const tracked = state.watchlist.filter((w) => w.kind === "WALLET").slice(0, 8);
-  for (const w of tracked) {
-    if (!wallets.some((s) => s.address === w.address)) {
-      try {
-        wallets.push(await analyzeWallet(w.address, db));
-      } catch {
-        /* invalid or insufficient history stays omitted */
+  const trackedAddresses = walletHistory.isDemo && state.candidates.some((c) => c.isDemo)
+    ? [...new Set([...tracked.map((w) => w.address), ...Object.values(DEMO_WALLETS)])]
+    : walletHistory.isDemo ? [] : tracked.map((w) => w.address);
+  const walletFlowEvidence: WalletFlowEvidence[] = [];
+  const tradesByWallet: Record<string, WalletTrade[]> = {};
+  for (const address of trackedAddresses) {
+    try {
+      const history = await walletHistory.getTrades(address);
+      if (history.isDemo !== walletHistory.isDemo) continue;
+      tradesByWallet[address] = history.trades;
+      const score = history.isDemo && new Set<string>(Object.values(DEMO_WALLETS)).has(address)
+        ? analyzeDemoWallet(address)
+        : scoreWallet({
+            address,
+            trades: history.trades,
+            isDemo: history.isDemo,
+            dataFreshness: history.freshness,
+          });
+      wallets.splice(0, wallets.length, score, ...wallets.filter((s) => s.address !== address));
+      await db.upsertWalletScore(score);
+      for (const trade of history.trades) {
+        if (trade.side !== "BUY" && trade.side !== "SELL") continue;
+        if (!Number.isFinite(trade.qty) || trade.qty <= 0) continue;
+        if (!history.isDemo && (trade.classificationConfidence == null || trade.classificationConfidence < 0.75)) continue;
+        const sourceSignature = trade.sourceSignature ?? (history.isDemo ? trade.signature : null);
+        if (!sourceSignature) continue;
+        walletFlowEvidence.push({
+          wallet: address, mint: trade.mint, signature: sourceSignature,
+          side: trade.side, qty: trade.qty, timestamp: trade.timestamp,
+          provider: trade.provider || history.provider,
+          freshness: history.freshness, isDemo: history.isDemo,
+        });
       }
+    } catch {
+      /* unavailable or invalid wallet history contributes no flow evidence */
     }
   }
   const out: SentinelSignal[] = [];
+  const walletClusters = buildWalletGraph({ tradesByWallet, isDemo: walletHistory.isDemo }).clusters;
   for (const asset of state.candidates.slice(0, 12)) {
     const on = await onchain.getTokenRiskInputs(asset.mint);
     const jup = await fetchJupiterTokenIntel(asset.mint);
@@ -112,6 +175,8 @@ export async function generateSmartMoneySignals(
       asset,
       marketSignals: signals,
       wallets,
+      walletFlowEvidence,
+      walletClusters,
       tokenRiskTier: tokenRisk.riskTier,
       tokenRiskScore: tokenRisk.riskScore,
     });
@@ -138,17 +203,10 @@ export async function runStrategyLab(params: {
   if (!asset) {
     throw new Error("No candidate available for backtest");
   }
-  let bars = await market.getOhlcv(asset.mint, "1h", 180);
-  if (!bars.length) {
-    bars = buildDemoOhlcv({
-      mint: asset.mint,
-      lastClose: asset.priceUsd ?? 1,
-      interval: "1h",
-      count: 180,
-      endMs: Date.now(),
-    });
-  }
-  const sol = await market.getOhlcv("So11111111111111111111111111111111111111112", "1h", 180);
+  const bars = asset.isDemo === market.isDemo ? await market.getOhlcv(asset.mint, "1h", 180) : [];
+  const sol = market.isDemo && bars.length
+    ? buildDemoOhlcv({ mint: WSOL, lastClose: 148.2, interval: "1h", count: bars.length, endMs: bars[bars.length - 1]!.timestamp })
+    : await market.getOhlcv(WSOL, "1h", 180);
   const config = {
     ...DEFAULT_STRATEGY_LAB_CONFIG,
     ...params.config,
@@ -159,27 +217,29 @@ export async function runStrategyLab(params: {
       {
         mint: asset.mint,
         bars,
-        liquidityUsd: asset.liquidityUsd,
-        tokenAgeHours: asset.tokenAgeHours,
-        tokenRiskScore: state.tokenRisk.find((t) => t.mint === asset.mint)?.riskScore ?? 25,
-        confirmingWallets: 2,
-        walletCredibility: 72,
+        liquidityUsd: market.isDemo && asset.isDemo ? asset.liquidityUsd : null,
+        tokenAgeHours: market.isDemo && asset.isDemo ? asset.tokenAgeHours : null,
+        tokenRiskScore: market.isDemo && asset.isDemo
+          ? (state.tokenRisk.find((t) => t.mint === asset.mint)?.riskScore ?? 25)
+          : null,
+        confirmingWallets: market.isDemo && asset.isDemo ? 2 : undefined,
+        walletCredibility: market.isDemo && asset.isDemo ? 72 : undefined,
       },
     ],
     config,
-    benchmark: sol.length ? sol : bars,
-    isDemo: Boolean(asset.isDemo || market.isDemo),
+    benchmark: sol,
+    isDemo: Boolean(asset.isDemo && market.isDemo),
     walkForward: params.walkForward ?? true,
   });
   await db.addBacktest(result);
   return result;
 }
 
-export function createAlertRule(
+export async function createAlertRule(
   partial: Partial<AlertRule> & Pick<AlertRule, "name" | "trigger">,
   db?: Database,
-): AlertRule {
-  const rule: AlertRule = {
+): Promise<AlertRule> {
+  const rule = AlertRuleSchema.parse({
     id: partial.id ?? newId(),
     name: partial.name,
     trigger: partial.trigger,
@@ -191,15 +251,17 @@ export function createAlertRule(
     quietHoursUtc: partial.quietHoursUtc ?? null,
     enabled: partial.enabled ?? true,
     createdAt: partial.createdAt ?? nowIso(),
-    isDemo: partial.isDemo ?? true,
-  };
-  getAlertEngine().upsertRule(rule);
-  void (db ?? getDatabase()).addAlertRule(rule);
+    isDemo: partial.isDemo ?? !(process.env.SAT_WALLET_HISTORY_SOURCE === "journal" &&
+      !!process.env.DATABASE_URL && ["TRACKED_WALLET_BUY", "TRACKED_WALLET_SELL"].includes(partial.trigger)),
+  });
+  const database = db ?? getDatabase();
+  await database.addAlertRule(rule);
+  (await getPersistentAlertEngine(database)).upsertRule(rule);
   return rule;
 }
 
 export async function emitTestAlert(trigger: AlertRule["trigger"], title: string, body: string) {
-  return getAlertEngine().emit({ trigger, title, body, isDemo: true, value: 80 });
+  return (await getPersistentAlertEngine()).emit({ trigger, title, body, isDemo: true, value: 80 });
 }
 
 export async function addWatchlistItem(input: {
@@ -212,14 +274,7 @@ export async function addWatchlistItem(input: {
   const parsed = SolanaAddressSchema.safeParse(input.address);
   if (!parsed.success) throw new Error("Invalid address");
   const db = input.db ?? getDatabase();
-  const state = await db.getState();
   const entitlements = input.entitlements ?? entitlementsFor("FREE");
-  if (state.watchlist.length >= entitlements.maxWatchlist) {
-    throw new Error("WATCHLIST_LIMIT");
-  }
-  if (state.watchlist.some((w) => w.address === parsed.data && w.kind === input.kind)) {
-    return state.watchlist.find((w) => w.address === parsed.data && w.kind === input.kind)!;
-  }
   const item: WatchlistItem = {
     id: newId(),
     kind: input.kind,
@@ -227,13 +282,11 @@ export async function addWatchlistItem(input: {
     label: input.label,
     addedAt: nowIso(),
   };
-  await db.setWatchlist([item, ...state.watchlist]);
-  return item;
+  return db.addWatchlistItem(item, entitlements.maxWatchlist);
 }
 
 export async function removeWatchlistItem(id: string, db: Database = getDatabase()): Promise<void> {
-  const state = await db.getState();
-  await db.setWatchlist(state.watchlist.filter((w) => w.id !== id));
+  await db.removeWatchlistItem(id);
 }
 
 export async function portfolioRiskSnapshot(db: Database = getDatabase()) {

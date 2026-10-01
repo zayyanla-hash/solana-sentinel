@@ -101,6 +101,7 @@ type StatePayload = {
   equityHistory: Array<{ t: string; nav: number }>;
   health: Health;
   operatingMode: string;
+  monitorOnly?: boolean;
   wallets?: Array<{
     address: string;
     score: number;
@@ -126,6 +127,17 @@ type StatePayload = {
     analogues?: Array<{ symbol: string; paperOutcome: string; note: string; similarity: number }>;
   }>;
   watchlist?: Array<{ id: string; kind: string; address: string; addedAt: string }>;
+  alertRules?: Array<{ id: string; name: string; trigger: string; channel: string; enabled: boolean; isDemo: boolean }>;
+  alertEvents?: Array<{
+    id: string;
+    title: string;
+    body: string;
+    trigger: string;
+    delivered: boolean;
+    suppressedReason: string | null;
+    createdAt: string;
+    isDemo: boolean;
+  }>;
   portfolioRisk?: {
     largestPositionPct: number | null;
     herfindahl: number | null;
@@ -135,33 +147,79 @@ type StatePayload = {
   };
 };
 
-async function fetchState(): Promise<StatePayload> {
-  const res = await fetch("/api/state", { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to load state");
-  const s = (await res.json()) as StatePayload;
-  if (s.candidates.length === 0) {
-    const boot = await fetch("/api/state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "bootstrap" }),
-    });
-    if (boot.ok) return boot.json() as Promise<StatePayload>;
-    const again = await fetch("/api/state", { cache: "no-store" });
-    if (!again.ok) throw new Error("Failed to bootstrap demo state");
-    return again.json() as Promise<StatePayload>;
+type BacktestView = {
+  metrics: { totalReturnPct: number; maxDrawdownPct: number; tradeCount: number } | null;
+  warnings: string[];
+  equity: number[];
+  label: string;
+};
+
+type MonitorPayload = {
+  status: "NOT_CONFIGURED" | "HEALTHY" | "DEGRADED";
+  scope: string;
+  stats: {
+    wallets: number;
+    observations: number;
+    trades: number;
+    pendingAlerts: number;
+    outcomes: { CLASSIFIED: number; UNKNOWN: number; FAILED: number };
+    coverage: { BOOTSTRAP_WINDOW: number; CATCHING_UP: number; CURRENT: number };
+  } | null;
+  wallets: Array<{
+    wallet: string;
+    coverage: string;
+    lastSuccessAt: string | null;
+    lastError: string | null;
+    pollAgeMs: number | null;
+  }>;
+  observedAt: string;
+};
+
+class ApiRequestError extends Error {
+  constructor(readonly status: number, readonly code: string, message: string) {
+    super(message);
   }
-  return s;
 }
 
-async function postAction(action: string, extra: Record<string, string> = {}) {
+function authHeaders(token: string): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function responseData<T>(res: Response): Promise<T> {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const code = typeof data.code === "string" ? data.code : "REQUEST_FAILED";
+    const message = typeof data.error === "string" ? data.error : "Request failed";
+    throw new ApiRequestError(res.status, code, message);
+  }
+  return data as T;
+}
+
+async function fetchState(token: string): Promise<StatePayload> {
+  const res = await fetch("/api/state", { cache: "no-store", headers: authHeaders(token) });
+  return responseData<StatePayload>(res);
+}
+
+async function fetchMonitor(token: string, signal?: AbortSignal): Promise<MonitorPayload> {
+  const res = await fetch("/api/monitor", {
+    cache: "no-store",
+    headers: authHeaders(token),
+    signal,
+  });
+  return responseData<MonitorPayload>(res);
+}
+
+async function postAction<T = Record<string, unknown>>(
+  token: string,
+  action: string,
+  extra: Record<string, string> = {},
+): Promise<T> {
   const res = await fetch("/api/state", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
     body: JSON.stringify({ action, ...extra }),
   });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? data.code ?? "Action failed");
-  return data;
+  return responseData<T>(res);
 }
 
 function Sparkline({ values }: { values: number[] }) {
@@ -210,52 +268,125 @@ function Pill({
 export default function DashboardPage() {
   const [data, setData] = useState<StatePayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState("");
+  const [tokenInput, setTokenInput] = useState("");
+  const [authRequired, setAuthRequired] = useState(false);
+  const [credentialsUnavailable, setCredentialsUnavailable] = useState(false);
+  const [monitor, setMonitor] = useState<MonitorPayload | null>(null);
+  const [monitorError, setMonitorError] = useState<string | null>(null);
   const [selectedMint, setSelectedMint] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [view, setView] = useState<"terminal" | "wallets" | "signals" | "lab" | "alerts">("terminal");
   const [walletLookup, setWalletLookup] = useState("");
   const [labMint, setLabMint] = useState<string>("");
-  const [backtest, setBacktest] = useState<{
-    metrics: { totalReturnPct: number; maxDrawdownPct: number; tradeCount: number } | null;
-    warnings: string[];
-    equity: number[];
-    label: string;
-  } | null>(null);
+  const [backtest, setBacktest] = useState<BacktestView | null>(null);
+
+  const handleRequestError = useCallback((cause: unknown) => {
+    if (cause instanceof ApiRequestError && cause.status === 401) {
+      setToken("");
+      setData(null);
+      setAuthRequired(true);
+      setCredentialsUnavailable(false);
+      setError("API token required or not accepted.");
+      return;
+    }
+    if (cause instanceof ApiRequestError && cause.status === 503 && cause.code === "AUTH_UNAVAILABLE") {
+      setData(null);
+      setCredentialsUnavailable(true);
+      setAuthRequired(false);
+      setError("Server API credentials are not configured. An operator must configure SAT_API_TOKEN on the server.");
+      return;
+    }
+    setError(cause instanceof Error ? cause.message : "Request failed");
+  }, []);
 
   const reload = useCallback(() => {
+    if (authRequired && !token) return;
     startTransition(async () => {
       try {
         setError(null);
-        const s = await fetchState();
+        const s = await fetchState(token);
         setData(s);
         if (!selectedMint && s.candidates[0]) setSelectedMint(s.candidates[0].mint);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        handleRequestError(e);
       }
     });
-  }, [selectedMint]);
+  }, [authRequired, token, selectedMint, handleRequestError]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
+  useEffect(() => {
+    if (!data?.monitorOnly) return;
+    const controller = new AbortController();
+    setMonitor(null);
+    setMonitorError(null);
+    fetchMonitor(token, controller.signal)
+      .then(setMonitor)
+      .catch((cause: unknown) => {
+        if (controller.signal.aborted) return;
+        if (cause instanceof ApiRequestError && (cause.status === 401 || (cause.status === 503 && cause.code === "AUTH_UNAVAILABLE"))) {
+          handleRequestError(cause);
+        } else {
+          setMonitorError(cause instanceof Error ? cause.message : "Monitor health unavailable");
+        }
+      });
+    return () => controller.abort();
+  }, [data, token, handleRequestError]);
+
+  const signIn = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const candidate = tokenInput.trim();
+    if (!candidate) return;
+    startTransition(async () => {
+      try {
+        setError(null);
+        const state = await fetchState(candidate);
+        setToken(candidate);
+        setTokenInput("");
+        setAuthRequired(false);
+        setCredentialsUnavailable(false);
+        setData(state);
+        if (!selectedMint && state.candidates[0]) setSelectedMint(state.candidates[0].mint);
+      } catch (e) {
+        handleRequestError(e);
+      }
+    });
+  };
+
+  const signOut = () => {
+    setToken("");
+    setTokenInput("");
+    setData(null);
+    setBacktest(null);
+    setMonitor(null);
+    setMonitorError(null);
+    setMsg(null);
+    setError(null);
+    setAuthRequired(true);
+  };
+
   const run = (action: string, extra?: Record<string, string>) => {
     startTransition(async () => {
       try {
         setMsg(null);
-        const result = await postAction(action, extra);
+        const result = await postAction<{ order?: { status: string; filledUsd: number } }>(token, action, extra);
         if (action === "paper_execute") {
+          if (!result.order) throw new Error("Paper fill response was incomplete");
           setMsg(
             `Paper fill ${result.order.status}: $${Number(result.order.filledUsd).toFixed(2)} (broadcast disabled)`,
           );
         } else {
           setMsg(`Action ${action} completed`);
         }
-        const s = await fetchState();
+        const s = await fetchState(token);
         setData(s);
       } catch (e) {
-        setMsg(e instanceof Error ? e.message : String(e));
+        if (e instanceof ApiRequestError && (e.status === 401 || e.status === 503)) handleRequestError(e);
+        else setMsg(e instanceof Error ? e.message : "Action failed");
       }
     });
   };
@@ -267,6 +398,10 @@ export default function DashboardPage() {
       (s, o) => s + o.spreadCostUsd + o.slippageCostUsd + o.impactCostUsd + o.networkCostUsd,
       0,
     ) ?? 0;
+  const pollAges = monitor?.wallets
+    .map((wallet) => wallet.pollAgeMs)
+    .filter((age): age is number => age != null && Number.isFinite(age) && age >= 0) ?? [];
+  const oldestPollAge = pollAges.length ? Math.max(...pollAges) : null;
 
   return (
     <div className="min-h-screen" data-testid="dashboard-root">
@@ -312,23 +447,121 @@ export default function DashboardPage() {
                 <span data-testid="health-public-demo">PUBLIC DEMO</span>
               </Pill>
             ) : null}
+            {data?.monitorOnly && <Pill tone="warn">MONITOR ONLY</Pill>}
+            {token && (
+              <button
+                type="button"
+                className="border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--muted)] hover:border-[var(--accent)]"
+                onClick={signOut}
+                disabled={pending}
+                data-testid="btn-sign-out"
+              >
+                Sign out
+              </button>
+            )}
             <span className="live-dot ml-2 h-2 w-2 rounded-full bg-[var(--accent)]" />
           </div>
         </div>
       </header>
 
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-6 md:px-8">
-        {error && (
+        {authRequired && !credentialsUnavailable && (
+          <form className="panel mx-auto w-full max-w-md p-5" onSubmit={signIn} data-testid="operator-sign-in">
+            <h2 className="text-sm font-semibold">Operator sign in</h2>
+            <p className="mt-2 text-xs text-[var(--muted)]">Enter the server API token to open this dashboard. It stays in this page until you sign out or close the tab.</p>
+            <label htmlFor="operator-token" className="mt-4 block text-xs text-[var(--muted)]">API token</label>
+            <input
+              id="operator-token"
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              className="mt-1 w-full border border-[var(--line)] bg-[var(--bg-2)] px-3 py-2 text-sm"
+              value={tokenInput}
+              onChange={(event) => setTokenInput(event.target.value)}
+              data-testid="operator-token-input"
+            />
+            {error && <p className="mt-2 text-xs text-[var(--bad)]">{error}</p>}
+            <button
+              type="submit"
+              disabled={pending || !tokenInput.trim()}
+              className="mt-4 border border-[var(--accent)] px-3 py-1.5 text-xs disabled:opacity-50"
+              data-testid="btn-operator-sign-in"
+            >
+              {pending ? "Checking…" : "Sign in"}
+            </button>
+          </form>
+        )}
+        {error && !authRequired && (
           <div className="panel border-[var(--bad)] p-4 text-[var(--bad)]">
             Failed to load dashboard: {error}
           </div>
         )}
-        {!data && !error && (
+        {!data && !error && !authRequired && (
           <div className="panel p-8 text-center text-[var(--muted)]">Loading research state…</div>
         )}
 
         {data && (
           <>
+            {data.monitorOnly && (
+              <section className="panel p-4 text-sm" data-testid="monitor-health-card">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-semibold">Wallet ingestion monitor</h2>
+                  <div className="flex items-center gap-2">
+                    {monitor && <Pill tone={monitor.status === "HEALTHY" ? "good" : "warn"}>{monitor.status.replaceAll("_", " ")}</Pill>}
+                    <button type="button" className="border border-[var(--line)] px-2 py-1 text-xs" onClick={reload} disabled={pending}>Refresh status</button>
+                  </div>
+                </div>
+                {monitorError ? (
+                  <p className="mt-2 text-xs text-[var(--warn)]">Monitor health unavailable: {monitorError}</p>
+                ) : !monitor ? (
+                  <p className="mt-2 text-xs text-[var(--muted)]">Loading monitor health…</p>
+                ) : (
+                  <>
+                    <p className="mt-2 text-xs text-[var(--muted)]">Scope: {monitor.scope}</p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">Observed at {new Date(monitor.observedAt).toLocaleString()}</p>
+                    {monitor.stats ? (
+                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+                        <span>Wallets {monitor.stats.wallets}</span>
+                        <span>Records {monitor.stats.observations}</span>
+                        <span>Classified {monitor.stats.outcomes.CLASSIFIED}</span>
+                        <span>Unknown {monitor.stats.outcomes.UNKNOWN}</span>
+                        <span>Failed {monitor.stats.outcomes.FAILED}</span>
+                        <span>Trades {monitor.stats.trades}</span>
+                        <span>Pending alerts {monitor.stats.pendingAlerts}</span>
+                        <span>Current {monitor.stats.coverage.CURRENT}/{monitor.stats.wallets}</span>
+                        <span>Oldest poll {oldestPollAge != null
+                          ? `${Math.ceil(oldestPollAge / 60_000)}m ago`
+                          : "unavailable"}</span>
+                      </div>
+                    ) : <p className="mt-2 text-xs text-[var(--warn)]">No monitor records are available.</p>}
+                    {monitor.wallets.find((wallet) => wallet.lastError)?.lastError && (
+                      <p className="mt-2 text-xs text-[var(--warn)]">Last provider error: {monitor.wallets.find((wallet) => wallet.lastError)?.lastError}</p>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+            {data.candidates.length === 0 && (
+              <section className="panel p-4" data-testid="empty-research-state">
+                <p className="text-sm text-[var(--muted)]">No candidates have been loaded yet.</p>
+                {!data.monitorOnly && !data.health.publicDemo && data.health.demoMode && (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => run("bootstrap")}
+                    className="mt-3 border border-[var(--demo)] px-3 py-1.5 text-xs"
+                    data-testid="btn-initialize-demo"
+                  >
+                    Initialize demo research
+                  </button>
+                )}
+                {data.monitorOnly ? (
+                  <p className="mt-2 text-xs text-[var(--muted)]">This deployment is configured for wallet monitoring. Open Wallets or Alerts to inspect stored results.</p>
+                ) : !data.health.demoMode && (
+                  <p className="mt-2 text-xs text-[var(--muted)]">Use Run research pass to fetch current market candidates.</p>
+                )}
+              </section>
+            )}
             <nav className="flex flex-wrap gap-2" data-testid="terminal-nav">
               {(
                 [
@@ -338,7 +571,7 @@ export default function DashboardPage() {
                   ["lab", "Strategy Lab"],
                   ["alerts", "Alerts"],
                 ] as const
-              ).map(([id, label]) => (
+              ).filter(([id]) => !data.monitorOnly || id === "terminal" || id === "wallets" || id === "alerts").map(([id, label]) => (
                 <button
                   key={id}
                   data-testid={`tab-${id}`}
@@ -358,7 +591,11 @@ export default function DashboardPage() {
                 {msg}
               </p>
             )}
-          {view === "terminal" && (
+          {view === "terminal" && (data.monitorOnly ? (
+            <section className="panel p-5 text-sm text-[var(--muted)]" data-testid="monitor-terminal">
+              Wallet monitoring is active in this deployment. Open Wallets to inspect tracked addresses or Alerts to review the internal inbox.
+            </section>
+          ) : (
           <>
             <section className="anim-fade grid gap-4 md:grid-cols-4">
               <div className="panel p-4 md:col-span-2">
@@ -443,7 +680,7 @@ export default function DashboardPage() {
                   )}
                 </ul>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {!data.health.publicDemo && (
+                  {!data.health.publicDemo && !data.monitorOnly && (
                     <>
                   <button
                     className="border border-[var(--line)] bg-[var(--bg-2)] px-3 py-1.5 text-xs hover:border-[var(--accent)]"
@@ -562,6 +799,7 @@ export default function DashboardPage() {
                             data-testid="btn-paper-execute"
                             disabled={
                               pending ||
+                              Boolean(data.monitorOnly) ||
                               Boolean(data.health.publicDemo) ||
                               selectedProposal.status === "REJECTED" ||
                               selectedProposal.status === "ACCEPTED_PAPER" ||
@@ -575,7 +813,7 @@ export default function DashboardPage() {
                           </button>
                           <button
                             className="border border-[var(--line)] px-3 py-2 text-xs"
-                            disabled={pending}
+                            disabled={pending || Boolean(data.monitorOnly)}
                             onClick={() => run("evaluate", { mint: selectedCandidate.mint })}
                           >
                             Re-evaluate
@@ -780,15 +1018,20 @@ export default function DashboardPage() {
               </section>
             )}
           </>
-          )}
+          ))}
 
           {view === "wallets" && (
             <section className="panel" data-testid="wallet-intel-panel">
               <div className="border-b border-[var(--line)] px-4 py-3">
                 <h2 className="text-sm font-semibold">Wallet credibility</h2>
                 <p className="text-xs text-[var(--muted)]">
-                  Not guaranteed profitable. Transfers are not buys. Unkeyed history is DEMO fixtures.
+                  {data.monitorOnly
+                    ? "Journal-backed wallet analysis. Scores require observed history and do not guarantee profitability."
+                    : "Not guaranteed profitable. Transfers are not buys. Unkeyed history is DEMO fixtures."}
                 </p>
+                {data.monitorOnly && (
+                  <p className="mt-1 text-xs text-[var(--warn)]">The worker loads configured watchlist wallets at startup. Restart it after changing the watchlist.</p>
+                )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <input
                     className="border border-[var(--line)] bg-[var(--bg-2)] px-2 py-1 text-xs mono w-72"
@@ -890,15 +1133,16 @@ export default function DashboardPage() {
                 <button
                   className="border border-[var(--accent)] px-3 py-1.5 text-xs"
                   data-testid="btn-run-backtest"
-                  disabled={pending || Boolean(data.health.publicDemo)}
+                  disabled={pending || Boolean(data.monitorOnly) || Boolean(data.health.publicDemo)}
                   onClick={() => {
                     startTransition(async () => {
                       try {
-                        const result = await postAction("backtest", labMint ? { mint: labMint } : {});
+                        const result = await postAction<{ backtest: BacktestView }>(token, "backtest", labMint ? { mint: labMint } : {});
                         setBacktest(result.backtest);
                         setMsg(`Backtest ${result.backtest.label} complete`);
                       } catch (e) {
-                        setMsg(e instanceof Error ? e.message : String(e));
+                        if (e instanceof ApiRequestError && (e.status === 401 || e.status === 503)) handleRequestError(e);
+                        else setMsg(e instanceof Error ? e.message : "Backtest failed");
                       }
                     });
                   }}
@@ -929,23 +1173,75 @@ export default function DashboardPage() {
             <section className="panel p-4" data-testid="alerts-panel">
               <h2 className="text-sm font-semibold">Alerts</h2>
               <p className="mt-1 text-xs text-[var(--muted)]">
-                Internal channel is live. Telegram/Discord/Email are stubs until credentials exist.
+                Internal inbox supported. External delivery is not configured.
               </p>
-              <button
-                className="mt-3 border border-[var(--line)] px-3 py-1.5 text-xs"
-                data-testid="btn-create-alert"
-                disabled={pending || Boolean(data.health.publicDemo)}
-                onClick={() => run("alert_create", { name: "score-cross", trigger: "SENTINEL_SCORE_CROSS" })}
-              >
-                Create score-cross alert
-              </button>
+              {data.monitorOnly ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    className="border border-[var(--line)] px-3 py-1.5 text-xs"
+                    data-testid="btn-create-wallet-buy-alert"
+                    disabled={pending || Boolean(data.health.publicDemo)}
+                    onClick={() => run("alert_create", { name: "tracked-wallet-buy", trigger: "TRACKED_WALLET_BUY" })}
+                  >
+                    Create wallet buy alert
+                  </button>
+                  <button
+                    className="border border-[var(--line)] px-3 py-1.5 text-xs"
+                    data-testid="btn-create-wallet-sell-alert"
+                    disabled={pending || Boolean(data.health.publicDemo)}
+                    onClick={() => run("alert_create", { name: "tracked-wallet-sell", trigger: "TRACKED_WALLET_SELL" })}
+                  >
+                    Create wallet sell alert
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="mt-3 border border-[var(--line)] px-3 py-1.5 text-xs"
+                  data-testid="btn-create-alert"
+                  disabled={pending || Boolean(data.health.publicDemo)}
+                  onClick={() => run("alert_create", { name: "score-cross", trigger: "SENTINEL_SCORE_CROSS" })}
+                >
+                  Create score-cross alert
+                </button>
+              )}
+              <div className="mt-4 text-xs" data-testid="alert-rules-panel">
+                <p className="uppercase text-[var(--muted)]">Rules</p>
+                {(data.alertRules ?? []).length === 0 && <p className="mt-2 text-[var(--muted)]">No alert rules configured.</p>}
+                {(data.alertRules ?? []).map((rule) => (
+                  <p key={rule.id} className="mt-1">
+                    {rule.name} · {rule.trigger} · {rule.channel} · {rule.enabled ? "enabled" : "disabled"}{rule.isDemo ? " · DEMO" : ""}
+                  </p>
+                ))}
+              </div>
+              <div className="mt-4 text-xs" data-testid="alert-inbox-panel">
+                <p className="uppercase text-[var(--muted)]">Internal inbox</p>
+                {(data.alertEvents ?? []).length === 0 && <p className="mt-2 text-[var(--muted)]">No alert events yet.</p>}
+                {[...(data.alertEvents ?? [])]
+                  .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                  .slice(0, 50)
+                  .map((event) => (
+                    <div key={event.id} className="mt-2 border-t border-[var(--line)] pt-2">
+                      <p>{event.title} · {event.trigger} · {event.delivered ? "delivered" : event.suppressedReason ?? "pending"}</p>
+                      <p className="mt-1 text-[var(--muted)]">{event.body}</p>
+                      <p className="mt-1 text-[var(--muted)]">{new Date(event.createdAt).toLocaleString()}{event.isDemo ? " · DEMO" : ""}</p>
+                    </div>
+                  ))}
+              </div>
               {(data.watchlist ?? []).length > 0 && (
                 <div className="mt-4 text-xs" data-testid="watchlist-panel">
                   <p className="uppercase text-[var(--muted)]">Watchlist</p>
                   {data.watchlist?.map((w) => (
-                    <p key={w.id} className="mono mt-1">
-                      {w.kind} {w.address}
-                    </p>
+                    <div key={w.id} className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="mono break-all">{w.kind} {w.address}</span>
+                      <button
+                        type="button"
+                        className="border border-[var(--line)] px-2 py-0.5"
+                        disabled={pending || Boolean(data.health.publicDemo)}
+                        onClick={() => run("watchlist_remove", { id: w.id })}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}

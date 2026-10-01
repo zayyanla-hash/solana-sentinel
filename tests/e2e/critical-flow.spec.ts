@@ -12,6 +12,11 @@ test.describe("critical DEMO/PAPER flow", () => {
     await expect(page.getByTestId("health-live-allowed")).toContainText("OFF");
     await expect(page.getByTestId("btn-activate-live")).toHaveCount(0);
 
+    // Loading the dashboard is read-only. Demo initialization is an explicit action.
+    const initialize = page.getByTestId("btn-initialize-demo");
+    await expect(initialize.or(page.getByTestId("candidate-SCAMX"))).toBeVisible();
+    if (await initialize.isVisible()) await initialize.click();
+
     await expect(page.getByTestId("candidate-SCAMX")).toBeVisible();
     await expect(page.getByTestId("proposal-status-SCAMX")).toHaveText("REJECTED");
 

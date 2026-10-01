@@ -70,7 +70,7 @@ export type MonitorHealth = {
     observations: number;
     trades: number;
     pendingAlerts: number;
-    outcomes: { UNKNOWN: number; FAILED: number };
+    outcomes: { UNKNOWN: number; FAILED: number; CLASSIFIED?: number };
     archivedObservations?: number;
     observationCapacityPercent?: number;
   } | null;
@@ -94,9 +94,15 @@ export type ActivityItem = {
 
 export type ActivityResponse = { wallet: string; activity: ActivityItem[]; scope?: string };
 
+/** One activity item tied to the wallet it was observed on. */
+export type Observation = { wallet: string; item: ActivityItem };
+
 export type RpcResult = { ok: boolean; probeDurationMs?: number; scope?: string };
 
-export type Tab = "monitor" | "alerts" | "setup";
+export type View = "home" | "wallets" | "alerts" | "setup";
+export type StepKey = "rpc" | "telegram" | "destination" | "team";
+/** Where a navigation lands inside a view. */
+export type NavTarget = { wallet?: string; step?: StepKey; alertsTab?: "inbox" | "rules" };
 export type Phase = "loading" | "signedOut" | "ready" | "unavailable";
 export type SignOutReason = null | "expired" | "signedOut";
 export type Notice = { tone: "success" | "error"; text: string; scope?: string };

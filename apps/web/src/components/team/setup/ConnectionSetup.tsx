@@ -4,7 +4,8 @@ import { teamAction } from "../api";
 import { isBase58Address } from "../format";
 import { presentRpc } from "../status";
 import type { Notice as NoticeT, RpcResult, Run, TeamStatus } from "../types";
-import { Button, Notice, Panel, PanelHeader, StatusPill, TextInput } from "../ui";
+import s from "../team.module.css";
+import { Button, Notice, StatusPill, TextInput, cx } from "../ui";
 
 export function ConnectionSetup({ team, run, pending, notice, onDismiss }: { team: TeamStatus; run: Run; pending: string | null; notice: NoticeT | null; onDismiss: () => void }) {
   const [endpoint, setEndpoint] = useState("");
@@ -29,24 +30,26 @@ export function ConnectionSetup({ team, run, pending, notice, onDismiss }: { tea
   }
 
   return (
-    <Panel id="setup-rpc" tabIndex={-1}>
-      <PanelHeader title="Solana connection" action={<StatusPill presented={presentRpc(team.rpcConfigured)} />}
-        hint={team.rpcConfigured ? "Configured. Enter a new endpoint to replace it. Secrets are stored encrypted and never displayed again." : "A dedicated RPC endpoint is required. Secrets are stored encrypted and never displayed again."} />
-      <ul className="mb-4 list-disc space-y-1 pl-5 text-xs text-[var(--muted)]">
+    <div id="setup-rpc" tabIndex={-1} className="flex flex-col gap-5 outline-none">
+      <div><StatusPill presented={presentRpc(team.rpcConfigured)} /></div>
+      <p className={cx(s.muted, "text-sm")}>
+        {team.rpcConfigured ? "Configured. Enter a new endpoint to replace it." : "A dedicated RPC endpoint is required."} Secrets are stored encrypted and never displayed again.
+      </p>
+      <ul className={cx(s.muted, "list-disc space-y-1 pl-5 text-[13px]")} style={{ listStyle: "disc" }}>
         <li>Dedicated HTTPS endpoint, Helius-compatible.</li>
         <li>Not the public mainnet-beta endpoint.</li>
         <li>No credentials in user:pass form; keep the API key in the path or query as your provider supplies it.</li>
       </ul>
-      <form onSubmit={submit} noValidate className="space-y-3">
+      <form onSubmit={submit} noValidate className="flex flex-col gap-5">
         <TextInput label="HTTPS RPC endpoint" type="password" autoComplete="off" value={endpoint} onChange={(e) => setEndpoint(e.target.value)} error={endpointError} hint="Hidden while you type and never shown again after saving." required />
-        <TextInput label="Active wallet for connection test" value={probe} onChange={(e) => setProbe(e.target.value)} className="mono" spellCheck={false} autoComplete="off" error={walletError} hint="An active public wallet with recent transactions, used only to test read methods." required />
-        <Button type="submit" variant="primary" busy={busy} busyText="Verifying with mainnet… (up to 30 s)" disabled={!!pending && !busy}>Verify &amp; save connection</Button>
+        <TextInput label="Active wallet for connection test" value={probe} onChange={(e) => setProbe(e.target.value)} className={s.mono} spellCheck={false} autoComplete="off" error={walletError} hint="An active public wallet with recent transactions, used only to test read methods." required />
+        <Button type="submit" variant="primary" className="self-start" busy={busy} busyText="Verifying with mainnet… (up to 30 s)" disabled={!!pending && !busy}>Verify &amp; save connection</Button>
       </form>
-      {notice && <Notice tone={notice.tone} onDismiss={onDismiss} className="mt-3">
+      {notice && <Notice tone={notice.tone} onDismiss={onDismiss}>
         {notice.text}
         {notice.tone === "success" && result?.probeDurationMs !== undefined && ` Probe took ${result.probeDurationMs} ms.`}
         {notice.tone === "success" && result?.scope && ` ${result.scope}`}
       </Notice>}
-    </Panel>
+    </div>
   );
 }

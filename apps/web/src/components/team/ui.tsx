@@ -1,114 +1,105 @@
 "use client";
-import { useEffect, useId, useRef, useState, type ComponentProps, type InputHTMLAttributes, type ReactNode } from "react";
-import { shortAddress } from "./format";
+import { useEffect, useId, useRef, useState, type ComponentProps, type CSSProperties, type InputHTMLAttributes, type ReactNode } from "react";
+import { formatAge } from "./format";
+import { Icon } from "./icons";
 import type { Presented, Tone } from "./status";
+import s from "./team.module.css";
 
-const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
-const focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-0)]";
+export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
-/* ---------- Panels ---------- */
-
-export function Panel({ children, className, id, tabIndex }: { children: ReactNode; className?: string; id?: string; tabIndex?: number }) {
-  return (
-    <section id={id} tabIndex={tabIndex} className={cx("rounded-lg border border-[var(--line)] bg-[var(--bg-1)]/90 p-4 sm:p-5", "focus:outline-none", className)}>
-      {children}
-    </section>
-  );
-}
-
-export function PanelHeader({ title, hint, action, titleId }: { title: string; hint?: ReactNode; action?: ReactNode; titleId?: string }) {
-  return (
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h2 id={titleId} className="text-base font-semibold text-[var(--text)]">{title}</h2>
-        {hint && <p className="mt-1 text-sm text-[var(--muted)]">{hint}</p>}
-      </div>
-      {action}
-    </div>
-  );
-}
-
-export function Well({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("rounded-md border border-[var(--line)] bg-[var(--bg-0)] p-3", className)}>{children}</div>;
-}
+/** Status colors. Used for dots and icons; pills carry their own fills. */
+export const TONE_COLOR: Record<Tone, string> = {
+  ok: "#00C805",
+  warn: "#FFB01F",
+  bad: "#FF5000",
+  neutral: "#8F897D",
+  pending: "#8F897D",
+};
 
 /* ---------- Status ---------- */
 
-const toneStyle: Record<Tone, { box: string; glyph: string }> = {
-  ok: { box: "border-[var(--good)]/50 bg-[var(--good)]/12 text-[#8fe0b0]", glyph: "✓" },
-  warn: { box: "border-[var(--warn)]/55 bg-[var(--warn)]/12 text-[#f0cb6a]", glyph: "!" },
-  bad: { box: "border-[var(--bad)]/60 bg-[var(--bad)]/14 text-[#ff9f9f]", glyph: "✕" },
-  neutral: { box: "border-[var(--line)] bg-[var(--bg-2)] text-[var(--muted)]", glyph: "○" },
-  pending: { box: "border-[var(--accent)]/45 bg-[var(--accent)]/10 text-[#8cc6f7]", glyph: "…" },
-};
+const PILL: Record<Tone, string> = { ok: s.pOk!, warn: s.pWarn!, bad: s.pBad!, neutral: s.pNeutral!, pending: s.pNeutral! };
 
-export function StatusPill({ presented, label, tone, title }: { presented?: Presented; label?: string; tone?: Tone; title?: string }) {
-  const resolvedTone = presented?.tone ?? tone ?? "neutral";
-  const style = toneStyle[resolvedTone];
+/** Filled pill: state is always a word on a color. */
+export function StatusPill({ presented, label, tone, title, className }: { presented?: Presented; label?: string; tone?: Tone; title?: string; className?: string }) {
+  const resolved = presented?.tone ?? tone ?? "neutral";
   return (
-    <span title={title ?? presented?.detail} className={cx("inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", style.box)}>
-      <span aria-hidden="true" className="w-3 text-center font-bold leading-none">{style.glyph}</span>
-      <span className="min-w-0 truncate">{presented?.label ?? label}</span>
+    <span title={title ?? presented?.detail} className={cx(s.pill, PILL[resolved], resolved === "pending" && s.pulse, className)}>
+      <span className={s.pillText}>{presented?.label ?? label}</span>
     </span>
   );
 }
 
-export function Notice({ tone, children, onDismiss, className }: { tone: "success" | "error" | "warn" | "info"; children: ReactNode; onDismiss?: () => void; className?: string }) {
-  const styles = {
-    success: "border-[var(--good)]/50 bg-[var(--good)]/10 text-[#b5ecca]",
-    error: "border-[var(--bad)]/60 bg-[var(--bad)]/12 text-[#ffc2c2]",
-    warn: "border-[var(--warn)]/55 bg-[var(--warn)]/10 text-[#f5dc99]",
-    info: "border-[var(--line)] bg-[var(--bg-2)] text-[var(--text)]",
-  }[tone];
+export function TagPill({ children, className }: { children: ReactNode; className?: string }) {
+  return <span className={cx(s.pill, s.pLine, className)}>{children}</span>;
+}
+
+export function Dot({ tone }: { tone: Tone }) {
+  return <span aria-hidden="true" className={s.dot} style={{ background: TONE_COLOR[tone] }} />;
+}
+
+export function Notice({ tone, children, onDismiss, className, action }: { tone: "success" | "error" | "warn" | "info"; children: ReactNode; onDismiss?: () => void; className?: string; action?: ReactNode }) {
+  const style = { success: s.noticeOk, error: s.noticeBad, warn: s.noticeWarn, info: "" }[tone];
   return (
-    <div role={tone === "error" ? "alert" : tone === "success" ? "status" : undefined} className={cx("flex items-start justify-between gap-3 rounded-md border px-3 py-2 text-sm", styles, className)}>
+    <div role={tone === "error" ? "alert" : tone === "success" || tone === "warn" ? "status" : undefined} className={cx(s.notice, style, "flex items-start justify-between gap-3", className)}>
       <div className="min-w-0 break-words">{children}</div>
-      {onDismiss && (
-        <button type="button" onClick={onDismiss} aria-label="Dismiss message" className={cx("-my-1 shrink-0 rounded px-2 py-1 text-base leading-none opacity-80 hover:opacity-100", focusRing)}>
-          ×
-        </button>
-      )}
+      <div className="flex shrink-0 items-center gap-1">
+        {action}
+        {onDismiss && (
+          <button type="button" onClick={onDismiss} aria-label="Dismiss message" className="-my-1 inline-flex size-9 items-center justify-center rounded-full border-0 bg-transparent text-current opacity-80 hover:opacity-100">
+            <Icon name="x" size={16} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 export function EmptyState({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-md border border-dashed border-[var(--line)] px-4 py-6 text-center">
-      <p className="text-sm font-medium text-[var(--text)]">{title}</p>
-      {children && <p className="mx-auto mt-1 max-w-md text-sm text-[var(--muted)]">{children}</p>}
-      {action && <div className="mt-3">{action}</div>}
+    <div className={cx(s.hair, "py-8")}>
+      <p className="text-[15px] font-semibold">{title}</p>
+      {children && <p className={cx(s.muted, "mt-1 max-w-lg text-sm")}>{children}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
 
-export function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden="true" className={cx("rounded bg-[var(--bg-2)] motion-safe:animate-pulse", className)} />;
+export function Skeleton({ className, style }: { className?: string; style?: CSSProperties }) {
+  return <div aria-hidden="true" className={cx(s.skeleton, "motion-safe:animate-pulse", className)} style={style} />;
 }
 
 /* ---------- Buttons ---------- */
 
-type Variant = "primary" | "secondary" | "danger" | "ghost";
-const variants: Record<Variant, string> = {
-  primary: "bg-[var(--accent)] text-[#0c1117] hover:brightness-110 border border-transparent",
-  secondary: "border border-[var(--line)] bg-transparent text-[var(--text)] hover:bg-[var(--bg-2)]",
-  danger: "border border-[var(--bad)]/70 bg-transparent text-[#ff9f9f] hover:bg-[var(--bad)]/12",
-  ghost: "border border-transparent bg-transparent text-[var(--muted)] hover:bg-[var(--bg-2)] hover:text-[var(--text)]",
-};
+type Variant = "primary" | "secondary" | "danger" | "warn" | "text";
 
-export function Button({ variant = "secondary", busy, busyText, className, children, disabled, ...rest }: ComponentProps<"button"> & { variant?: Variant; busy?: boolean; busyText?: string }) {
+export function Button({ variant = "secondary", small, busy, busyText, className, children, disabled, ...rest }: ComponentProps<"button"> & { variant?: Variant; small?: boolean; busy?: boolean; busyText?: string }) {
+  const base = variant === "primary" ? cx(s.cta, small && s.ctaSm) : variant === "text" ? s.txtbtn : cx(s.btn2, small && s.btnSm, variant === "danger" && s.btnDanger, variant === "warn" && s.btnWarn);
   return (
-    <button
-      type="button"
-      {...rest}
-      disabled={disabled || busy}
-      aria-busy={busy || undefined}
-      className={cx("inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-3.5 text-sm font-semibold transition-colors sm:min-h-9", "disabled:cursor-not-allowed disabled:opacity-50", variants[variant], focusRing, className)}
-    >
-      {busy && <span aria-hidden="true" className="size-3 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" />}
+    <button type="button" {...rest} disabled={disabled || busy} aria-busy={busy || undefined} className={cx(base, className)}>
+      {busy && <span aria-hidden="true" className={s.spin} />}
       {busy && busyText ? busyText : children}
     </button>
+  );
+}
+
+/** A row of toggle chips (aria-pressed), used for chart and list filters. */
+export function SegGroup<T extends string>({ label, options, value, onChange, className }: { label: string; options: { value: T; label: ReactNode; count?: number }[]; value: T; onChange: (value: T) => void; className?: string }) {
+  return (
+    <div role="group" aria-label={label} className={cx("flex flex-wrap gap-1", className)}>
+      {options.map((option) => (
+        <button key={option.value} type="button" aria-pressed={value === option.value} onClick={() => onChange(option.value)} className={cx(s.seg, value === option.value && s.segOn)}>
+          {option.label}
+          {option.count !== undefined && <span className="tabular-nums opacity-80">{option.count}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Switch({ checked, onChange, label, disabled, busy }: { checked: boolean; onChange: (next: boolean) => void; label: string; disabled?: boolean; busy?: boolean }) {
+  return (
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} aria-busy={busy || undefined} disabled={disabled || busy} onClick={() => onChange(!checked)} className={cx(s.switch, checked ? s.switchOn : s.switchOff)} />
   );
 }
 
@@ -116,41 +107,35 @@ export function Button({ variant = "secondary", busy, busyText, className, child
 
 type FieldAria = { id: string; "aria-describedby"?: string; "aria-invalid"?: true };
 
-export function Field({ label, hint, error, optional, children }: { label: string; hint?: ReactNode; error?: string | null; optional?: boolean; children: (aria: FieldAria) => ReactNode }) {
+export function Field({ label, hint, error, optional, children, srLabel }: { label: string; hint?: ReactNode; error?: string | null; optional?: boolean; srLabel?: boolean; children: (aria: FieldAria) => ReactNode }) {
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
   const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined;
   return (
     <div className="block min-w-0">
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-[var(--text)]">
+      <label htmlFor={id} className={srLabel ? s.sr : s.label}>
         {label}
-        {optional && <span className="ml-1 font-normal text-[var(--muted)]">(optional)</span>}
+        {optional && <span className={cx(s.muted, "ml-1 font-normal")}>(optional)</span>}
       </label>
       {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
-      {hint && <p id={hintId} className="mt-1 text-xs text-[var(--muted)]">{hint}</p>}
-      {error && <p id={errorId} className="mt-1 text-xs font-medium text-[#ff9f9f]">{error}</p>}
+      {hint && <p id={hintId} className={s.hint}>{hint}</p>}
+      {error && <p id={errorId} className={s.fieldError}>{error}</p>}
     </div>
   );
 }
 
-export const inputClass = cx(
-  "block min-h-10 w-full rounded-md border border-[var(--line)] bg-[var(--bg-0)] px-3 py-2 text-sm text-[var(--text)] sm:min-h-9",
-  "placeholder:text-[var(--muted)]/70 aria-[invalid=true]:border-[var(--bad)] disabled:opacity-60",
-  focusRing,
-);
-
-export function TextInput({ label, hint, error, optional, className, ...rest }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: ReactNode; error?: string | null; optional?: boolean }) {
+export function TextInput({ label, hint, error, optional, srLabel, className, ground, small, ...rest }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: ReactNode; error?: string | null; optional?: boolean; srLabel?: boolean; ground?: boolean; small?: boolean }) {
   return (
-    <Field label={label} hint={hint} error={error} optional={optional}>
-      {(aria) => <input {...rest} {...aria} className={cx(inputClass, className)} />}
+    <Field label={label} hint={hint} error={error} optional={optional} srLabel={srLabel}>
+      {(aria) => <input {...rest} {...aria} className={cx(s.field, ground && s.fieldGround, small && s.fieldSm, className)} />}
     </Field>
   );
 }
 
-/* ---------- Addresses & confirmation ---------- */
+/* ---------- Addresses, copy, confirm ---------- */
 
-export function CopyButton({ value, label }: { value: string; label: string }) {
+export function CopyButton({ value, label, children, className, small = true }: { value: string; label: string; children?: ReactNode; className?: string; small?: boolean }) {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
@@ -160,28 +145,20 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   return (
     <button
       type="button"
-      aria-label={copied ? "Copied" : label}
+      aria-label={children ? undefined : copied ? "Copied" : label}
       onClick={() => {
         void navigator.clipboard?.writeText(value).then(() => setCopied(true)).catch(() => undefined);
       }}
-      className={cx("shrink-0 rounded border border-[var(--line)] px-1.5 py-0.5 text-xs text-[var(--muted)] hover:bg-[var(--bg-2)] hover:text-[var(--text)]", focusRing)}
+      className={cx(s.btn2, small && s.btnSm, className)}
     >
-      {copied ? "Copied" : "Copy"}
+      <Icon name={copied ? "check" : "copy"} size={16} />
+      {children ? (copied ? "Copied" : children) : <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>}
     </button>
   );
 }
 
-export function Address({ value, full, copy = true, label = "Copy address" }: { value: string; full?: boolean; copy?: boolean; label?: string }) {
-  return (
-    <span className="inline-flex max-w-full items-center gap-2 align-middle">
-      <span title={value} className={cx("mono text-sm", full && "break-all")}>{full ? value : shortAddress(value)}</span>
-      {copy && <CopyButton value={value} label={label} />}
-    </span>
-  );
-}
-
 /** Two-step confirmation shown in place of the trigger. Focus moves to Cancel so Escape/Enter stay safe. */
-export function ConfirmInline({ trigger, message, confirmLabel = "Confirm", tone = "danger", busy, onConfirm }: { trigger: string; message: ReactNode; confirmLabel?: string; tone?: "danger" | "warn"; busy?: boolean; onConfirm: () => void | Promise<unknown> }) {
+export function ConfirmInline({ trigger, message, confirmLabel = "Confirm", tone = "danger", busy, triggerClassName, triggerVariant, onConfirm }: { trigger: string; message: ReactNode; confirmLabel?: string; tone?: "danger" | "warn"; busy?: boolean; triggerClassName?: string; triggerVariant?: Variant | "link"; onConfirm: () => void | Promise<unknown> }) {
   const [open, setOpen] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -192,21 +169,53 @@ export function ConfirmInline({ trigger, message, confirmLabel = "Confirm", tone
     wasOpen.current = open;
   }, [open]);
   if (!open) {
+    const variant = triggerVariant === "link" ? "text" : triggerVariant ?? (tone === "danger" ? "danger" : "warn");
     return (
-      <Button ref={triggerRef} variant={tone === "danger" ? "danger" : "secondary"} onClick={() => setOpen(true)} disabled={busy}>
+      <Button ref={triggerRef} variant={variant} small={variant !== "text"} className={cx(triggerVariant === "link" && s.txtDanger, triggerClassName)} onClick={() => setOpen(true)} disabled={busy}>
         {trigger}
       </Button>
     );
   }
   return (
-    <div role="group" aria-label={`Confirm: ${trigger}`} onKeyDown={(event) => event.key === "Escape" && setOpen(false)} className={cx("w-full rounded-md border p-3", tone === "danger" ? "border-[var(--bad)]/60 bg-[var(--bad)]/8" : "border-[var(--warn)]/55 bg-[var(--warn)]/8")}>
-      <p className="mb-2 text-sm">{message}</p>
+    <div role="group" aria-label={`Confirm: ${trigger}`} onKeyDown={(event) => event.key === "Escape" && setOpen(false)} className={cx(s.confirm, tone === "warn" && s.confirmWarn)}>
+      <p className="mb-3 text-sm text-[#e9e4da]">{message}</p>
       <div className="flex flex-wrap gap-2">
-        <Button variant={tone === "danger" ? "danger" : "secondary"} busy={busy} busyText="Working…" onClick={async () => { await onConfirm(); setOpen(false); }}>
+        <Button variant={tone === "danger" ? "danger" : "warn"} small busy={busy} busyText="Working…" onClick={async () => { await onConfirm(); setOpen(false); }}>
           {confirmLabel}
         </Button>
-        <Button ref={cancelRef} onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
+        <Button ref={cancelRef} small onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
       </div>
     </div>
   );
+}
+
+/* ---------- Time ---------- */
+
+/** Ticking clock for age labels. Only the component that calls it re-renders. */
+export function useNow(intervalMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(timer);
+  }, [intervalMs]);
+  return now;
+}
+
+export function Updated({ at, prefix = "Updated" }: { at: number | null; prefix?: string }) {
+  const now = useNow(1000);
+  if (at === null) return <span>Not updated yet</span>;
+  return <span>{prefix} {formatAge(Math.max(0, now - at))} ago</span>;
+}
+
+/** True once the last successful refresh is older than `afterMs`, or a refresh error is showing. Re-renders only on change. */
+export function useStale(lastSuccessAt: number | null, refreshError: string | null, afterMs = 45_000): boolean {
+  const compute = () => lastSuccessAt !== null && (Boolean(refreshError) || Date.now() - lastSuccessAt > afterMs);
+  const [stale, setStale] = useState(compute);
+  useEffect(() => {
+    const check = () => setStale(lastSuccessAt !== null && (Boolean(refreshError) || Date.now() - lastSuccessAt > afterMs));
+    check();
+    const timer = setInterval(check, 3000);
+    return () => clearInterval(timer);
+  }, [lastSuccessAt, refreshError, afterMs]);
+  return stale;
 }

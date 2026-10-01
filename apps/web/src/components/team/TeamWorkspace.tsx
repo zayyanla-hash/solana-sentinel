@@ -1,39 +1,39 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ActivityPanel } from "./ActivityPanel";
-import { DeliveriesPanel } from "./DeliveriesPanel";
-import { HealthStrip } from "./HealthStrip";
-import { InboxPanel } from "./InboxPanel";
-import { MonitorStats } from "./MonitorStats";
-import { RulesPanel } from "./RulesPanel";
-import { SetupChecklist } from "./SetupChecklist";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertsView } from "./AlertsView";
+import { Banners } from "./BannersGroup";
+import { HomeView } from "./HomeView";
+import { SetupView } from "./SetupView";
+import { BottomTabs, Brand, TopBar } from "./Shell";
 import { SignIn } from "./SignIn";
-import { WatchlistPanel } from "./WatchlistPanel";
-import { AuditLog } from "./setup/AuditLog";
-import { ConnectionSetup } from "./setup/ConnectionSetup";
-import { DestinationSetup } from "./setup/DestinationSetup";
-import { TeamAccess } from "./setup/TeamAccess";
-import { TelegramBotSetup } from "./setup/TelegramBotSetup";
-import { setupSteps, type SetupKey } from "./status";
-import type { Tab } from "./types";
-import { Button, Notice, Panel, Skeleton } from "./ui";
+import { WalletView } from "./WalletView";
+import { WalletsList } from "./WalletsList";
+import { geist, geistMono } from "./fonts";
+import { stepper } from "./derive";
+import s from "./team.module.css";
+import type { NavTarget, View } from "./types";
+import { useActivityFeed } from "./useActivityFeed";
 import { useTeamWorkspace } from "./useTeamWorkspace";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "monitor", label: "Wallets & activity" },
-  { id: "alerts", label: "Alerts" },
-  { id: "setup", label: "Setup & team" },
-];
+import { Button, Skeleton, cx, useStale } from "./ui";
 
 export function TeamWorkspace() {
   const ws = useTeamWorkspace();
-  const [tab, setTab] = useState<Tab>("monitor");
-  const [selected, setSelected] = useState<string | null>(null);
-  const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
   const { phase, team, state, monitor, errors, pending, notice } = ws;
+  const [view, setView] = useState<View>("home");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [setupStep, setSetupStep] = useState<{ step?: NavTarget["step"]; n: number }>({ n: 0 });
+  const [alertsTab, setAlertsTab] = useState<{ tab: "inbox" | "rules"; n: number }>({ tab: "inbox", n: 0 });
+  const mainRef = useRef<HTMLElement>(null);
+  const firstView = useRef(true);
+  const stale = useStale(ws.lastSuccessAt, ws.refreshError);
+
+  const addresses = useMemo(() => state?.watchlist.filter((w) => w.kind === "WALLET").map((w) => w.address) ?? [], [state]);
+  const ready = phase === "ready" && team !== null;
+  const feed = useActivityFeed({ addresses, enabled: ready, active: ready && (view === "home" || view === "wallets"), tick: ws.lastSuccessAt, load: ws.loadActivity });
 
   useEffect(() => {
-    if (phase !== "ready") { setSelected(null); setTab("monitor"); }
+    if (phase !== "ready") { setSelected(null); setView("home"); setQuery(""); }
   }, [phase]);
 
   // Clear the selection if its wallet disappears (for example removed by the other member).
@@ -41,133 +41,89 @@ export function TeamWorkspace() {
     if (selected && state && !state.watchlist.some((w) => w.address === selected)) setSelected(null);
   }, [selected, state]);
 
-  const selectWallet = (address: string | null) => {
-    setSelected(address);
-    if (address && window.matchMedia("(max-width: 1023px)").matches) {
-      setTimeout(() => document.getElementById("wallet-activity")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    }
-  };
+  useEffect(() => {
+    if (firstView.current) { firstView.current = false; return; }
+    window.scrollTo({ top: 0 });
+    mainRef.current?.focus({ preventScroll: true });
+  }, [view, selected]);
 
-  const goSetup = useCallback((key: SetupKey | "team") => {
-    setTab("setup");
-    const target = key === "wallet" ? null : `setup-${key}`;
-    setTimeout(() => {
-      const element = target ? document.getElementById(target) : null;
-      if (element) { element.scrollIntoView({ block: "start" }); element.focus({ preventScroll: true }); }
-      else if (key === "wallet") setTab("monitor");
-    }, 0);
+  const go = useCallback((next: View, target?: NavTarget) => {
+    setView(next);
+    setSelected(next === "wallets" ? target?.wallet ?? null : null);
+    if (next === "setup") setSetupStep((current) => ({ step: target?.step, n: current.n + 1 }));
+    if (next === "alerts") setAlertsTab((current) => ({ tab: target?.alertsTab ?? "inbox", n: current.n + 1 }));
   }, []);
 
-  function onTabKey(event: KeyboardEvent, index: number) {
-    const keys: Record<string, number> = { ArrowRight: (index + 1) % TABS.length, ArrowLeft: (index + TABS.length - 1) % TABS.length, Home: 0, End: TABS.length - 1 };
-    if (!(event.key in keys)) return;
-    event.preventDefault();
-    const next = TABS[keys[event.key]!]!;
-    setTab(next.id);
-    tabRefs.current[next.id]?.focus();
-  }
-
-  const steps = team ? setupSteps({ rpcConfigured: team.rpcConfigured, telegramConfigured: team.telegramConfigured, destination: team.destination, walletCount: state?.watchlist.filter((w) => w.kind === "WALLET").length ?? 0 }) : [];
-  const todo = steps.filter((s) => !s.done).length;
+  const todo = team ? stepper(team).filter((step) => step.state !== "done").length : 0;
   const scoped = (scope: string) => (notice?.scope === scope ? notice : null);
-  const counts: Record<Tab, string> = {
-    monitor: "",
-    alerts: state ? ` (${state.alertRules.length})` : "",
-    setup: team && todo ? ` (${todo} to do)` : "",
-  };
+  const showSearch = view === "home" || (view === "wallets" && !selected);
+  const hasWallets = addresses.length > 0;
 
   return (
-    <main className="min-h-screen pb-16">
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[var(--bg-0)]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-          <div className="min-w-0">
-            <h1 className="brand text-2xl leading-tight font-semibold sm:text-[28px]">Solana Sentinel <span className="text-base font-normal text-[var(--muted)] sm:text-lg">· Shared wallet monitor</span></h1>
-            <p className="text-xs text-[var(--muted)]">Read-only chain access · no signing or trading</p>
-          </div>
-          {team && (
-            <div className="flex items-center gap-3">
-              <span className="rounded-full border border-[var(--line)] px-3 py-1 text-sm" title="Signed in as">{team.member.username}</span>
-              <Button busy={pending === "signout"} busyText="Signing out…" onClick={() => void ws.signOut()}>Sign out</Button>
-            </div>
-          )}
+    <div className={cx(geist.variable, geistMono.variable, s.root)}>
+      <a href="#main" className={s.skip}>Skip to content</a>
+
+      {phase === "signedOut" && <SignIn reason={ws.signOutReason} pending={pending === "signin"} onSignIn={ws.signIn} />}
+
+      {phase === "loading" && (
+        <div aria-busy="true">
+          <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-8"><Brand /></div>
+          <main id="main" className="mx-auto flex max-w-[1280px] flex-col gap-5 px-5 pb-16 sm:px-8">
+            <Skeleton className="h-9 w-[70%]" /><Skeleton className="h-4 w-[45%]" /><Skeleton className="h-[150px] w-full" />
+            <div className="flex gap-1.5"><Skeleton className="h-8 w-14 !rounded-full" /><Skeleton className="h-8 w-16 !rounded-full" /><Skeleton className="h-8 w-16 !rounded-full" /></div>
+            {[0, 1, 2, 3].map((n) => <div key={n} className="flex items-center justify-between border-b border-[var(--t-hair)] py-2.5"><div className="flex flex-col gap-1.5"><Skeleton className="h-3.5 w-[120px]" /><Skeleton className="h-3 w-20" /></div><Skeleton className="h-7 w-[84px] !rounded-full" /></div>)}
+            <p role="status" className={cx(s.muted, "text-[13px]")}>Connecting to your workspace…</p>
+          </main>
         </div>
-      </header>
+      )}
 
-      <div className="mx-auto max-w-[1280px] space-y-4 px-4 pt-5 sm:px-6">
-        <div aria-live="polite">
-          {notice && !notice.scope && <Notice tone={notice.tone} onDismiss={ws.dismissNotice}>{notice.text}</Notice>}
+      {phase === "unavailable" && (
+        <div>
+          <div className="mx-auto max-w-[1280px] px-5 py-6 sm:px-8"><Brand /></div>
+          <main id="main" className="mx-auto flex max-w-lg flex-col gap-4 px-5 pt-10 sm:px-8">
+            <h1 className="text-3xl font-medium tracking-[-0.03em]">The workspace is unreachable</h1>
+            <p className={cx(s.muted, "text-[15px]")}>{ws.refreshError ?? "The server did not respond."} The host may be asleep, restarting or offline.</p>
+            <Button className="self-start" variant="primary" busy={ws.refreshing} busyText="Retrying…" onClick={() => void ws.refresh()}>Retry</Button>
+          </main>
         </div>
+      )}
 
-        {phase === "loading" && (
-          <div aria-busy="true" aria-label="Connecting to your workspace" className="space-y-4">
-            <p className="text-sm text-[var(--muted)]">Connecting to your workspace…</p>
-            <Skeleton className="h-20" /><Skeleton className="h-10" /><Skeleton className="h-64" />
-          </div>
-        )}
-        {phase === "unavailable" && (
-          <Panel className="mx-auto max-w-lg text-center">
-            <h2 className="text-lg font-semibold">The workspace is unreachable</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">{ws.refreshError ?? "The server did not respond."} The host may be asleep, restarting or offline.</p>
-            <Button className="mt-4" variant="primary" busy={ws.refreshing} busyText="Retrying…" onClick={() => void ws.refresh()}>Retry</Button>
-          </Panel>
-        )}
-        {phase === "signedOut" && <SignIn reason={ws.signOutReason} pending={pending === "signin"} onSignIn={ws.signIn} />}
+      {ready && team && (
+        <>
+          <TopBar view={view} onView={(next) => go(next)} username={team.member.username} query={query} onQuery={setQuery} showSearch={showSearch && hasWallets}
+            signingOut={pending === "signout"} onSignOut={() => void ws.signOut()} todo={todo} />
+          <main id="main" ref={mainRef} tabIndex={-1} className="mx-auto max-w-[1280px] px-5 pt-8 pb-28 outline-none md:px-8 md:pt-12 md:pb-24">
+            <Banners ws={ws} />
+            {showSearch && hasWallets && (
+              <label className="relative mb-6 block md:hidden">
+                <span className={s.sr}>Search watched wallets</span>
+                <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search wallets" autoComplete="off" spellCheck={false} className={cx(s.field, "!h-11 !rounded-full !text-sm")} />
+              </label>
+            )}
 
-        {phase === "ready" && team && (
-          <>
-            <HealthStrip team={team} monitor={monitor} monitorError={errors.monitor} monitorUpdatedAt={ws.monitorUpdatedAt} lastSuccessAt={ws.lastSuccessAt} refreshError={ws.refreshError} refreshing={ws.refreshing} onRefresh={() => void ws.refresh()} />
-            <div role="tablist" aria-label="Workspace" className="flex gap-1 overflow-x-auto rounded-lg border border-[var(--line)] bg-[var(--bg-1)]/90 p-1">
-              {TABS.map((t, i) => (
-                <button key={t.id} ref={(el) => { tabRefs.current[t.id] = el; }} role="tab" id={`tab-${t.id}`} type="button" aria-selected={tab === t.id} aria-controls={`panel-${t.id}`} tabIndex={tab === t.id ? 0 : -1}
-                  onClick={() => setTab(t.id)} onKeyDown={(e) => onTabKey(e, i)}
-                  className={`min-h-10 shrink-0 rounded-md px-4 text-sm font-semibold whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${tab === t.id ? "bg-[var(--accent)] text-[#0c1117]" : "text-[var(--muted)] hover:bg-[var(--bg-2)] hover:text-[var(--text)]"}`}>
-                  {t.label}{counts[t.id]}
-                </button>
-              ))}
-            </div>
-
-            <div role="tabpanel" id="panel-monitor" aria-labelledby="tab-monitor" hidden={tab !== "monitor"} className="space-y-4">
-              {tab === "monitor" && (
-                <>
-                  <SetupChecklist steps={steps} onGo={goSetup} />
-                  <div className="grid gap-4 lg:grid-cols-12">
-                    <div className="lg:col-span-7"><WatchlistPanel state={state} monitor={monitor} error={errors.state} selected={selected} onSelect={selectWallet} run={ws.run} pending={pending} /></div>
-                    <div className="lg:sticky lg:top-24 lg:col-span-5 lg:self-start"><ActivityPanel wallet={selected} load={ws.loadActivity} /></div>
-                  </div>
-                  <MonitorStats monitor={monitor} error={errors.monitor} />
-                </>
-              )}
-            </div>
-
-            <div role="tabpanel" id="panel-alerts" aria-labelledby="tab-alerts" hidden={tab !== "alerts"}>
-              {tab === "alerts" && (
-                <div className="grid gap-4 lg:grid-cols-12">
-                  <div className="lg:col-span-7"><RulesPanel state={state} error={errors.state} run={ws.run} pending={pending} /></div>
-                  <div className="space-y-4 lg:col-span-5">
-                    <InboxPanel state={state} error={errors.state} />
-                    <DeliveriesPanel team={team} run={ws.run} pending={pending} onSetup={() => goSetup("destination")} />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div role="tabpanel" id="panel-setup" aria-labelledby="tab-setup" hidden={tab !== "setup"} className="space-y-4">
-              {tab === "setup" && (
-                <>
-                  <p className="text-sm font-medium">Setup {steps.length - todo} of {steps.length} complete</p>
-                  <div className="grid gap-4 md:grid-cols-2 md:items-start">
-                    <ConnectionSetup team={team} run={ws.run} pending={pending} notice={scoped("rpc")} onDismiss={ws.dismissNotice} />
-                    <TelegramBotSetup team={team} run={ws.run} pending={pending} notice={scoped("telegram")} onDismiss={ws.dismissNotice} />
-                    <DestinationSetup team={team} run={ws.run} pending={pending} notice={scoped("destination")} onDismiss={ws.dismissNotice} />
-                    <TeamAccess team={team} issued={ws.issued} run={ws.run} pending={pending} notice={scoped("team")} onGenerate={ws.generateCredential} onHide={ws.hideIssued} onDismiss={ws.dismissNotice} />
-                  </div>
-                  <AuditLog team={team} />
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </main>
+            {view === "home" && (
+              <HomeView team={team} state={state} monitor={monitor} errors={errors} feed={feed.entries} observations={feed.observations} newest={feed.newest} reload={feed.reload}
+                addresses={addresses} query={query} stale={stale} updatedAt={ws.lastSuccessAt} refreshing={ws.refreshing} onRefresh={() => void ws.refresh()}
+                onNavigate={go} run={ws.run} pending={pending} />
+            )}
+            {view === "wallets" && !selected && (
+              <WalletsList state={state} monitor={monitor} error={errors.state} feed={feed.entries} query={query} onOpen={(address) => go("wallets", { wallet: address })} run={ws.run} pending={pending} />
+            )}
+            {view === "wallets" && selected && (
+              <WalletView address={selected} team={team} state={state} monitor={monitor} entry={feed.entries[selected]} reload={feed.reload} dim={stale} run={ws.run} pending={pending}
+                notice={scoped("wallet-alert")} onDismiss={ws.dismissNotice} onBack={() => go("wallets")} onEditRules={() => go("alerts", { alertsTab: "rules" })} />
+            )}
+            {view === "alerts" && (
+              <AlertsView key={alertsTab.n} initialTab={alertsTab.tab} state={state} error={errors.state} team={team} run={ws.run} pending={pending} onSetup={() => go("setup", { step: "destination" })} />
+            )}
+            {view === "setup" && (
+              <SetupView key={setupStep.n} initialStep={setupStep.step} team={team} run={ws.run} pending={pending} issued={ws.issued} scoped={scoped}
+                onGenerate={ws.generateCredential} onHide={ws.hideIssued} onDismiss={ws.dismissNotice} />
+            )}
+          </main>
+          <BottomTabs view={view} onView={(next) => go(next)} todo={todo} />
+        </>
+      )}
+    </div>
   );
 }

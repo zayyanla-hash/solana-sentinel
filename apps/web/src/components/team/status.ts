@@ -127,9 +127,9 @@ export function presentActivityOutcome(outcome: string): Presented {
     case "TRADE":
       return { tone: "ok", label: "Trade" };
     case "CLASSIFIED":
-      return { tone: "ok", label: "Classified trade" };
+      return { tone: "ok", label: "Classified" };
     case "FAILED":
-      return { tone: "bad", label: "Failed transaction" };
+      return { tone: "bad", label: "Failed", detail: "The transaction failed on chain" };
     case "UNKNOWN":
       return { tone: "neutral", label: "Unclassified", detail: "Not proof of no trade" };
     default:

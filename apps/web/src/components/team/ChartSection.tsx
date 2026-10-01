@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { ChartLegend, ObservationChart, chartRange } from "./Chart";
-import type { ChartFilter } from "./chart";
+import type { ChartFilter } from "./chart-model";
 import { shortAddress } from "./format";
 import type { FeedEntry } from "./useActivityFeed";
 import type { Observation } from "./types";

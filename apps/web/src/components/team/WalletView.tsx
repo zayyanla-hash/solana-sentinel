@@ -92,7 +92,7 @@ export function WalletView({ address, team, state, monitor, entry, reload, dim, 
           {entry?.error && !loaded && <NoticeBox tone="error" className="mt-3" action={<Button small onClick={() => reload(address)}>Retry</Button>}>Could not load activity: {entry.error}</NoticeBox>}
           {!entry?.error && !loaded && <div className="mt-4 space-y-3"><Skeleton className="h-14" /><Skeleton className="h-14" /><Skeleton className="h-14" /></div>}
           {loaded && newest.length === 0 && <p className={cx(s.muted, "pt-4 text-sm")}>No observations yet. They appear after the first successful poll of this wallet.</p>}
-          {newest.length > 0 && <ActivityList items={newest} pageSize={50} />}
+          {newest.length > 0 && <ActivityList key={address} items={newest} pageSize={15} />}
           <p className={cx(s.fine, "mt-4")}>Most recent 50 observations. Reinterpretations by a newer parser do not send historical alerts. USD unavailable.</p>
         </section>
       </div>

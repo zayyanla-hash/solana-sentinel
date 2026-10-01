@@ -62,8 +62,7 @@ function Row({ entry, showWallet, onOpenWallet }: { entry: Observation; showWall
 /** Observations grouped by local day. Input is newest first. */
 export function ActivityList({ items, showWallet = false, onOpenWallet, pageSize = PAGE }: { items: Observation[]; showWallet?: boolean; onOpenWallet?: (wallet: string) => void; pageSize?: number }) {
   const [shown, setShown] = useState(pageSize);
-  const visible = items.slice(0, shown);
-  const groups = useMemo(() => groupByDay(visible), [visible]);
+  const groups = useMemo(() => groupByDay(items.slice(0, shown)), [items, shown]);
   return (
     <div>
       {groups.map((group, index) => (
@@ -72,9 +71,14 @@ export function ActivityList({ items, showWallet = false, onOpenWallet, pageSize
           <ul>{group.items.map((entry) => <Row key={`${entry.wallet}:${entry.item.signature}`} entry={entry} showWallet={showWallet} onOpenWallet={onOpenWallet} />)}</ul>
         </div>
       ))}
-      {items.length > shown && (
-        <div className="pt-4">
-          <Button small onClick={() => setShown((n) => n + pageSize)}>Show more ({items.length - shown} older)</Button>
+      {(items.length > shown || shown > pageSize) && (
+        <div className="flex flex-wrap items-center gap-2 pt-4">
+          {items.length > shown && (
+            <Button small onClick={() => setShown((n) => n + pageSize)}>
+              Show {Math.min(pageSize, items.length - shown)} more <span className={s.muted}>· {items.length - shown} older</span>
+            </Button>
+          )}
+          {shown > pageSize && <Button variant="text" onClick={() => setShown(pageSize)}>Show fewer</Button>}
         </div>
       )}
     </div>

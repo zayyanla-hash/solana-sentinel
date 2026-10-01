@@ -1,11 +1,12 @@
 /**
  * Runtime schema used by PostgresDatabase.
- * Mirrored in supabase/migrations/20260908000000_v15_store.sql — keep identical.
+ * Runtime bootstrap reflects the original v15 store migration plus later additive migrations.
+ * New DDL belongs in a new migration; never edit an already-applied migration.
  *
  * JSONB payloads are the source of truth for round-trip fidelity with Zod types.
  * Legacy domain tables in 20260325000000_init.sql remain unused by the Node adapter.
  */
-export const STORE_SCHEMA_VERSION = 2;
+export const STORE_SCHEMA_VERSION = 3;
 
 export const STORE_SCHEMA_SQL = `
 create table if not exists sat_candidates (
@@ -99,6 +100,23 @@ create table if not exists sat_meta (
   payload jsonb not null
 );
 
+create table if not exists sat_alert_cooldowns (
+  k text primary key,
+  expires_at timestamptz not null
+);
+
+create table if not exists sat_alert_event_facts (
+  id uuid primary key,
+  payload jsonb not null
+);
+
+-- Cold facts keep permanent replay keys and the exact event payload in compressed form.
+create table if not exists sat_alert_event_archive (
+  id uuid primary key,
+  payload bytea not null,
+  archived_at timestamptz not null default now()
+);
+
 create table if not exists sat_schema_version (
   id int primary key default 1 check (id = 1),
   version int not null
@@ -124,5 +142,8 @@ alter table sat_experiments enable row level security;
 alter table sat_signals enable row level security;
 alter table sat_equity enable row level security;
 alter table sat_meta enable row level security;
+alter table sat_alert_cooldowns enable row level security;
+alter table sat_alert_event_facts enable row level security;
+alter table sat_alert_event_archive enable row level security;
 alter table sat_schema_version enable row level security;
 `;

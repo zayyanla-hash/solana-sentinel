@@ -12,6 +12,11 @@ test.describe("critical DEMO/PAPER flow", () => {
     await expect(page.getByTestId("health-live-allowed")).toContainText("OFF");
     await expect(page.getByTestId("btn-activate-live")).toHaveCount(0);
 
+    // Loading the dashboard is read-only. Demo initialization is an explicit action.
+    const initialize = page.getByTestId("btn-initialize-demo");
+    await expect(initialize.or(page.getByTestId("candidate-SCAMX"))).toBeVisible();
+    if (await initialize.isVisible()) await initialize.click();
+
     await expect(page.getByTestId("candidate-SCAMX")).toBeVisible();
     await expect(page.getByTestId("proposal-status-SCAMX")).toHaveText("REJECTED");
 
@@ -69,5 +74,23 @@ test.describe("critical DEMO/PAPER flow", () => {
     const after = await health.json();
     expect(after.health.liveTradingAllowed).toBe(false);
     expect(after.health.canBroadcast).toBe(false);
+
+    await page.getByTestId("tab-wallets").click();
+    await expect(page.getByTestId("wallet-intel-panel")).toBeVisible();
+    await page.getByTestId("tab-lab").click();
+    await expect(page.getByTestId("strategy-lab-panel")).toBeVisible();
+    await page.getByTestId("btn-run-backtest").click();
+    await expect(page.getByTestId("backtest-result")).toBeVisible();
+    await page.getByTestId("tab-alerts").click();
+    await expect(page.getByTestId("alerts-panel")).toBeVisible();
+    await page.getByTestId("btn-create-alert").click();
+    await expect(page.getByTestId("action-msg")).toContainText(/alert_create|completed/i);
+
+    const healthApi = await request.get("/api/health");
+    expect(healthApi.ok()).toBeTruthy();
+    const v1 = await request.get("/api/v1/health");
+    expect(v1.ok()).toBeTruthy();
+    const body = await v1.json();
+    expect(body.data.canBroadcast).toBe(false);
   });
 });

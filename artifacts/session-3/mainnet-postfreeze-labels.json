@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "labeledAt": "2026-10-01T05:51:15.721612+00:00",
+  "sourceArtifact": "mainnet-postfreeze-unreviewed.json",
+  "scope": "Unseen signatures from one public wallet after BUY parser freeze; labels derived from raw account/instruction/balance evidence before prediction evaluation",
+  "requested": 30,
+  "acquired": 30,
+  "acquisitionFailures": 0,
+  "previouslySeen": 15,
+  "newSignatures": 15,
+  "labelCounts": {
+    "BUY": 6,
+    "SELL": 5
+  },
+  "failedLabels": 1,
+  "unreviewedIndices": [
+    16,
+    19,
+    22
+  ],
+  "accuracy": null,
+  "labels": [
+    {
+      "sourceIndex": 15,
+      "signature": "64649jgmxgEcoRCGfjpyDUKtLVFyfrHMY51w8sGbwA1KsWKq2g1RvVxhM4CRycfJ268fa8Zvvhw4V7ZGdrg2Cjjp",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "Daxa99DPHYb3FeTRRqpNSCJkBkpDAK8uyXC6dHqnpump",
+        "qty": 17471.897906
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[6]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=7]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump BUY instruction, Jupiter wallet route, exact wallet-owned token receipt, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 17,
+      "signature": "5duNwrAQcmuqXDDTWZD9J1ERRBndXtMxzcg6o8FWRcwoz4Bb7ByGLJ8Z58RnuBqLStBdyYWFQmsPxHFDdR6pVFRu",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "GRriSXDvM85H3PmBLfnJuGYgSHJMEzE8VApMVR6upump",
+        "qty": 20526.202339
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[3]",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=4]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump SELL instruction, Jupiter wallet route, exact wallet-owned token debit, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 18,
+      "signature": "54KnWCVJjo5MWzhSfyfkaDUGt1rq4KQcE8UgmJG3awYEKqTo79ZFaGwcY8PaAWPMSptX5UR4wJLwZu4az5zVuMYn",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "GRriSXDvM85H3PmBLfnJuGYgSHJMEzE8VApMVR6upump",
+        "qty": 20526.202339
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[6]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=4]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump BUY instruction, Jupiter wallet route, exact wallet-owned token receipt, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 20,
+      "signature": "3ysAiszeCGwh7j11Eeihe9bJew8A25GU5p16QKMJXi1UZ12qa63dPRDtSrVArf9RUuo6UUqYpFANij3spGLwNiiu",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "DqnbDyc8dbhcVmg8qXjd2DEGRoaXwvrNrT7akoQWpump",
+        "qty": 23148.49083
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[3]",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=3]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump SELL instruction, Jupiter wallet route, exact wallet-owned token debit, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 21,
+      "signature": "Ahz1DxnzvJiv1ovqv8TYVR88AcYvTwkntA8k5vetFFJLkS3ksobba81FudAy1NtYzEjxpDR71F5HxGf6EfGbHmC",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "DqnbDyc8dbhcVmg8qXjd2DEGRoaXwvrNrT7akoQWpump",
+        "qty": 23148.49083
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[6]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=3]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump BUY instruction, Jupiter wallet route, exact wallet-owned token receipt, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 23,
+      "signature": "5xdVpymX9RkCmSoavQ6dX2UHmKEL7RG1tq7QRzqLNZMFBLqArWHzGqkuq5njwxwFkAYBgTtSxbysVTV5HbzeaG2R",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "J1unb95XNV4iEAJbJxK39BaPjMpfBMmr5vJr58rGpump",
+        "qty": 39305.36327
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[3]",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=10]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump SELL instruction, Jupiter wallet route, exact wallet-owned token debit, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 24,
+      "signature": "4xUDK6p4fHkxNkjovNwomNNiJ3PTF2KENWdH5ZJPXmdauvk5kwQ2f8vPuVDZxCysXm2dbHM8rusVaWVBR7g1xTJK",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "J1unb95XNV4iEAJbJxK39BaPjMpfBMmr5vJr58rGpump",
+        "qty": 39305.36327
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[6]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=10]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump BUY instruction, Jupiter wallet route, exact wallet-owned token receipt, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 25,
+      "signature": "2Y1wvZbxBf2QkAswYzdw6rHnZbbw8QoDKmCbWAToKnMUvMi3B1dfdMzCvCsWXF6ZSJDHH393eFZhHCMQmck4NJoS",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "evidencePaths": [
+        "raw.meta.err"
+      ],
+      "reason": "Finalized transaction meta.err is non-null; no settled trade."
+    },
+    {
+      "sourceIndex": 26,
+      "signature": "5vysNGkfiMaf6tFh6xvmVTf9c2fKAtMGhF8gBR7nSCvVS3FvNzoN8CBLE2eqLUXjvnoKLrzNAcuLGkojscAzq32H",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "Azw9ZeMomtPXrtpzsHFP3DoPbzdkpCHgjdgkHvMypump",
+        "qty": 30679.61399
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[3]",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=2]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump SELL instruction, Jupiter wallet route, exact wallet-owned token debit, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 27,
+      "signature": "4deaCeeHrYdKhZYPmhaP3WwZQUUb4muU9fk3QuPfusdVrCrRYvspEmoiGehFVkQ2PovRBrANQxukzTVtVw6eSNw4",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "Azw9ZeMomtPXrtpzsHFP3DoPbzdkpCHgjdgkHvMypump",
+        "qty": 30679.61399
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[6]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=2]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump BUY instruction, Jupiter wallet route, exact wallet-owned token receipt, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 28,
+      "signature": "5V3KFXMDLyh6zixbEUVzoCxvcHxxnFxPb41aVreXZqhCk3PZKMemVkLHfMux2Lxce5fyWHSHYUAmEkgFJ2HKUxhb",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "FqiQ37s9JHuqERgTVBCiJGjjnNYWrzrmnkENgtRacNjr",
+        "qty": 31079.969881
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[3]",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=2]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump SELL instruction, Jupiter wallet route, exact wallet-owned token debit, temporary WSOL close to wallet, and matching native direction."
+    },
+    {
+      "sourceIndex": 29,
+      "signature": "fFXrHTXfE9JvoWy1yEhbCvwqkwHC3aX9DcwHPJ5AiFeEW8xqjEpaPLjdVgpNtsbT25CQsFejVKYynJcVJDLkDHH",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "FqiQ37s9JHuqERgTVBCiJGjjnNYWrzrmnkENgtRacNjr",
+        "qty": 31079.969881
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.meta.logMessages[Pump instruction]",
+        "raw.transaction.message.instructions[6]",
+        "raw.meta.innerInstructions[index=6].instructions[4].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=2]",
+        "raw.transaction.message.instructions[last].parsed.info",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "reason": "Raw finalized Pump BUY instruction, Jupiter wallet route, exact wallet-owned token receipt, temporary WSOL close to wallet, and matching native direction."
+    }
+  ]
+}

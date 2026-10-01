@@ -27,6 +27,7 @@ const INTERVAL_MS: Record<OhlcvInterval, number> = {
   "15m": 900_000,
   "1h": 3_600_000,
   "4h": 14_400_000,
+  "1d": 86_400_000,
 };
 
 const BIRDEYE_TYPE: Record<OhlcvInterval, string> = {
@@ -35,6 +36,7 @@ const BIRDEYE_TYPE: Record<OhlcvInterval, string> = {
   "15m": "15m",
   "1h": "1H",
   "4h": "4H",
+  "1d": "1D",
 };
 
 export function intervalMs(interval: OhlcvInterval): number {
@@ -137,7 +139,6 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = process.env.BIRDEYE_API_BASE ?? "https://public-api.birdeye.so",
-    private readonly fallback = new DemoMarketDataProvider(),
   ) {}
 
   private headers(): Record<string, string> {
@@ -151,7 +152,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
   async listTrending(limit = 20): Promise<CandidateAsset[]> {
     try {
       const url = `${this.baseUrl}/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=${limit}`;
-      const res = await fetch(url, { headers: this.headers() });
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
       if (!res.ok) throw new Error(`Birdeye HTTP ${res.status}`);
       const json = (await res.json()) as {
         data?: { tokens?: Array<Record<string, unknown>> };
@@ -182,20 +183,25 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
         });
         if (parsed.success) out.push(parsed.data);
       }
-      return out.length ? out : this.fallback.listTrending(limit);
-    } catch {
-      return this.fallback.listTrending(limit);
+      if (!out.length) {
+        throw new Error("Birdeye trending returned 0 validated rows");
+      }
+      return out;
+    } catch (err) {
+      throw new Error(
+        `Birdeye trending failed (no demo fallback): ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
   async getAsset(mint: string): Promise<CandidateAsset | null> {
     try {
       const url = `${this.baseUrl}/defi/token_overview?address=${mint}`;
-      const res = await fetch(url, { headers: this.headers() });
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
       if (!res.ok) throw new Error(`Birdeye HTTP ${res.status}`);
       const json = (await res.json()) as { data?: Record<string, unknown> };
       const t = json.data;
-      if (!t) return this.fallback.getAsset(mint);
+      if (!t) return null;
       const parsed = CandidateAssetSchema.safeParse({
         mint,
         symbol: String(t.symbol ?? "UNK"),
@@ -217,9 +223,9 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
         riskFlags: [],
         isDemo: false,
       });
-      return parsed.success ? parsed.data : this.fallback.getAsset(mint);
+      return parsed.success ? parsed.data : null;
     } catch {
-      return this.fallback.getAsset(mint);
+      return null;
     }
   }
 
@@ -237,9 +243,6 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
       this.ohlcvCache.set(key, { at: Date.now(), bars });
       return bars;
     } catch {
-      // Do not invent live bars. Demo fallback only for known demo mints.
-      const demo = getDemoCandidates().some((c) => c.mint === mint);
-      if (demo) return this.fallback.getOhlcv(mint, interval, limit);
       return [];
     }
   }
@@ -259,7 +262,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
     v3.searchParams.set("mode", "count");
     v3.searchParams.set("count_limit", String(Math.min(Math.max(limit, 1), 5000)));
     v3.searchParams.set("padding", "false");
-    const v3res = await fetch(v3, { headers: this.headers() });
+    const v3res = await fetch(v3, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
     if (v3res.ok) {
       const bars = parseBirdeyeOhlcv(await v3res.json());
       if (bars.length) return bars.slice(-limit);
@@ -270,7 +273,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
     v1.searchParams.set("type", type);
     v1.searchParams.set("time_from", String(timeFrom));
     v1.searchParams.set("time_to", String(timeTo));
-    const v1res = await fetch(v1, { headers: this.headers() });
+    const v1res = await fetch(v1, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
     if (!v1res.ok) throw new Error(`Birdeye OHLCV HTTP ${v1res.status}`);
     return parseBirdeyeOhlcv(await v1res.json()).slice(-limit);
   }

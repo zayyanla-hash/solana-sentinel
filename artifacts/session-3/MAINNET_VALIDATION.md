@@ -1,0 +1,13 @@
+# Finalized mainnet transaction validation
+
+The parser now recognizes a narrow Jupiter route through Pump `BuyExactQuoteInV2` when a wallet funds and closes a temporary WSOL account and receives exactly one wallet-owned Token-2022 asset. It checks the official Pump instruction discriminator and 27 account roles, the observed serialized arguments, wallet authority, token balances, inner transfers, and native accounting. Other shapes abstain.
+
+The [official Pump IDL](https://github.com/pump-fun/pump-public-docs/blob/main/idl/pump.json) establishes the discriminator and account roles. The observed transactions include one trailing `0x01` byte beyond the IDL's two `u64` arguments. The parser accepts only that observed byte and otherwise abstains.
+
+Three public finalized BUY transactions from one wallet and one route were used for development. Eleven adversarial mutations of a source transaction must abstain. Two additional transactions were evaluated after implementation, with exact BUY side, mint, and quantity on both. Those two had been inspected when assembling labels, so they are a separate evaluation subset, not a blind holdout.
+
+After freezing the parser, a fresh capture requested 30 finalized signatures from the same wallet. Fifteen signatures were new. Labels were derived from raw transaction status, instructions, account ownership, token deltas, and native balances **before** running predictions on the new set. The 15 new records contained six evidence-labeled BUY, five evidence-labeled SELL, one failed transaction, and three transactions left unreviewed. Of the eleven directional labels, ten matched side, mint, and quantity. The eleventh BUY abstained as `UNKNOWN`: it used a base token program outside the newly supported Token-2022 path. The failed transaction was reported `FAILED` with no trade. There were no directional predictions on an independently labeled case that contradicted its label.
+
+This is route-specific evidence from one wallet. It does not measure general classification accuracy, wallet discovery completeness, transfer coverage, unrelated protocols, or long-term uptime. The three unreviewed transactions are not counted as correct abstentions. Overall accuracy remains `null`.
+
+Evidence: `mainnet-postfreeze-unreviewed.json` (public finalized RPC response and acquisition record), `mainnet-postfreeze-labels.json` (raw-source labels), and `mainnet-postfreeze-evaluation.json` (predictions). The earlier `mainnet-buy-holdout.json`, `mainnet-sell-holdout.json`, and `mainnet-failed-holdout.json` show the pre-freeze source review. These files contain public chain data and no private credentials.

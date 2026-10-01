@@ -3,8 +3,9 @@ import {
   runDemoExperiment,
   getSystemHealth,
   getOperatingMode,
+  closeProviders,
 } from "@sat/pipeline";
-import { getDatabase } from "@sat/database";
+import { getDatabase, closeDatabase } from "@sat/database";
 
 async function main() {
   const db = getDatabase();
@@ -39,7 +40,18 @@ async function main() {
   );
 }
 
-main().catch((err) => {
+async function cleanup() {
+  await closeProviders();
+  await closeDatabase();
+}
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    process.exitCode = signal === "SIGINT" ? 130 : 143;
+    void closeProviders().catch(() => { process.exitCode = 1; });
+  });
+}
+
+main().finally(cleanup).catch((err) => {
   console.error(err);
-  process.exit(1);
+  process.exitCode ??= 1;
 });

@@ -12,6 +12,9 @@ export interface PerformanceMetrics {
   warnings: string[];
   costDragUsd: number;
   volatilityPct: number | null;
+  hitRate: number | null;
+  avgGainPct: number | null;
+  avgLossPct: number | null;
 }
 
 export function computeDrawdown(series: number[]): number {
@@ -76,6 +79,11 @@ export function computePerformance(
   } else {
     warnings.push("Insufficient downside observations for Sortino");
   }
+  const gains = rets.filter((r) => r > 0);
+  const losses = rets.filter((r) => r < 0);
+  const hitRate = rets.length >= 5 ? gains.length / rets.length : null;
+  const avgGainPct = gains.length >= 3 ? mean(gains) * 100 : null;
+  const avgLossPct = losses.length >= 3 ? mean(losses) * 100 : null;
   return {
     totalReturnPct,
     maxDrawdownPct,
@@ -85,7 +93,23 @@ export function computePerformance(
     warnings,
     costDragUsd,
     volatilityPct: vol > 0 ? vol * Math.sqrt(252) * 100 : null,
+    hitRate,
+    avgGainPct,
+    avgLossPct,
   };
+}
+
+export function equalWeightSeries(seriesList: number[][]): number[] {
+  if (!seriesList.length) return [];
+  const len = Math.min(...seriesList.map((s) => s.length));
+  if (len < 2) return [];
+  const out: number[] = [];
+  const start = seriesList.reduce((s, row) => s + (row[0] ?? 0), 0) / seriesList.length;
+  for (let i = 0; i < len; i++) {
+    const avg = seriesList.reduce((s, row) => s + (row[i] ?? 0), 0) / seriesList.length;
+    out.push(start > 0 ? avg / start : 1);
+  }
+  return out;
 }
 
 export function buyAndHoldSeries(

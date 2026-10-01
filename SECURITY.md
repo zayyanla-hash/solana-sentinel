@@ -21,7 +21,7 @@ Use `.env.example` as the only committed env template. Secret scanning: `.gitlea
 | External metadata / social / web | UNTRUSTED; injection-sanitized |
 | Execution provider | Quote + plan only; `canBroadcast` always `false` |
 | Policy / risk / token-risk | Deterministic; LLM cannot bypass |
-| Local HTTP API | GET `/api/state` is read-only. POST mutations: CSRF/origin check; if `SAT_BIND_HOST` is not loopback, `SAT_API_TOKEN` Bearer is required. Do not expose an unauthenticated mutable API. |
+| Local HTTP API | GET `/api/state` is read-only. POST mutations: CSRF/origin check; if `SAT_BIND_HOST` is not loopback, `SAT_API_TOKEN` Bearer is required. `PUBLIC_DEMO=true` blocks anonymous mutations even on loopback. Do not expose an unauthenticated mutable API. |
 
 ## Bind / remote demo
 

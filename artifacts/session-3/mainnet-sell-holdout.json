@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-01T05:40:59.908177+00:00",
+  "labelStatus": "SOURCE_TRANSACTION_REVIEW",
+  "scope": "Five new finalized transactions from one wallet and the same Jupiter-to-Pump SellV2 route, selected from 15 recent wallet signatures; original training signature excluded",
+  "sourceArtifact": "mainnet-wallet-unreviewed.json",
+  "requested": 15,
+  "acquired": 15,
+  "directionalLabels": 5,
+  "directionalMatches": 5,
+  "remainingUnreviewed": 9,
+  "accuracy": null,
+  "caveat": "This tests new signatures within a narrow route and wallet. It contains no reviewed BUY, and unlabeled transactions cannot establish recall or general accuracy.",
+  "labels": [
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 3,
+      "signature": "3Z5ss5LgEqjF6StoZLPqMwmLh4WhgeBmaBPJTa16QGdfw5tovxqEsw9yEfFTyDaQb58waNPFCcig2ABs8ku9qy7D",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "3X5xoV6n5tpLf61o5cQndRCHcbL7ZFdEDvCpWpr5pump",
+        "qty": 30684.158815
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[3]",
+        "raw.transaction.message.instructions[4].parsed.info",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=9]",
+        "raw.meta.postTokenBalances[accountIndex=9]",
+        "raw.meta.logMessages[Pump SellV2]",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/3Z5ss5LgEqjF6StoZLPqMwmLh4WhgeBmaBPJTa16QGdfw5tovxqEsw9yEfFTyDaQb58waNPFCcig2ABs8ku9qy7D",
+      "reason": "Finalized successful Jupiter route invokes Pump SellV2; wallet-authorized transferChecked debits the same amount of the wallet-owned token source, the temporary output account closes back to the wallet, and native balance increases after fees.",
+      "predictionMatched": true
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 5,
+      "signature": "2Ut8S1ARUJwiDQpJXzztptfmTyHAX34fNcfYgEjFiaRJLMbaq5b3vA7m2TSdpLhGLMFL2SXDWsF2FV57XmRdogEk",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "8ZS6gkb9XpGVNYdMYECLVr1kgApJVpWvvrUw45tQpump",
+        "qty": 605855.32963
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[3]",
+        "raw.transaction.message.instructions[4].parsed.info",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=4]",
+        "raw.meta.postTokenBalances[accountIndex=4]",
+        "raw.meta.logMessages[Pump SellV2]",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/2Ut8S1ARUJwiDQpJXzztptfmTyHAX34fNcfYgEjFiaRJLMbaq5b3vA7m2TSdpLhGLMFL2SXDWsF2FV57XmRdogEk",
+      "reason": "Finalized successful Jupiter route invokes Pump SellV2; wallet-authorized transferChecked debits the same amount of the wallet-owned token source, the temporary output account closes back to the wallet, and native balance increases after fees.",
+      "predictionMatched": true
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 8,
+      "signature": "2NpMwrpVYQ5q52r7wcVZbTSwVbPovGwgAUoQZTXX8RGMrxC6EwativcQQmMJzLNJ6jqWFDVXXKkdj9z8pLbHEp4x",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "51wRtAb9S8U5cyjcdbkjLTcs9WAKw7717zY56Yxjpump",
+        "qty": 29100.788619
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[3]",
+        "raw.transaction.message.instructions[4].parsed.info",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=5]",
+        "raw.meta.postTokenBalances[accountIndex=5]",
+        "raw.meta.logMessages[Pump SellV2]",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/2NpMwrpVYQ5q52r7wcVZbTSwVbPovGwgAUoQZTXX8RGMrxC6EwativcQQmMJzLNJ6jqWFDVXXKkdj9z8pLbHEp4x",
+      "reason": "Finalized successful Jupiter route invokes Pump SellV2; wallet-authorized transferChecked debits the same amount of the wallet-owned token source, the temporary output account closes back to the wallet, and native balance increases after fees.",
+      "predictionMatched": true
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 11,
+      "signature": "23SQKoHgysXc7iWLovySL2ynS4n7WgdJqP5r4VgTu4twnXSWvUCK5GAwvjaAYeFCfMmz1PcpA2qp8SGjMWm7ixfb",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "8jFfVbGyGDhFQDhUJnHtygfNaahoRJRv2nKnkHhFpump",
+        "qty": 39962.785238
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[3]",
+        "raw.transaction.message.instructions[4].parsed.info",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=5]",
+        "raw.meta.postTokenBalances[accountIndex=5]",
+        "raw.meta.logMessages[Pump SellV2]",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/23SQKoHgysXc7iWLovySL2ynS4n7WgdJqP5r4VgTu4twnXSWvUCK5GAwvjaAYeFCfMmz1PcpA2qp8SGjMWm7ixfb",
+      "reason": "Finalized successful Jupiter route invokes Pump SellV2; wallet-authorized transferChecked debits the same amount of the wallet-owned token source, the temporary output account closes back to the wallet, and native balance increases after fees.",
+      "predictionMatched": true
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 14,
+      "signature": "28kqJDBywHL5DhD8BNJVUyq4XTD8x8DaVb4X9wsJ1tH7WXVhWVB78jTkbpSLvkR2sFBrnEcFjyKu465reSqmzFMR",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "Daxa99DPHYb3FeTRRqpNSCJkBkpDAK8uyXC6dHqnpump",
+        "qty": 17471.897906
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[3]",
+        "raw.transaction.message.instructions[4].parsed.info",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=7]",
+        "raw.meta.postTokenBalances[accountIndex=7]",
+        "raw.meta.logMessages[Pump SellV2]",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/28kqJDBywHL5DhD8BNJVUyq4XTD8x8DaVb4X9wsJ1tH7WXVhWVB78jTkbpSLvkR2sFBrnEcFjyKu465reSqmzFMR",
+      "reason": "Finalized successful Jupiter route invokes Pump SellV2; wallet-authorized transferChecked debits the same amount of the wallet-owned token source, the temporary output account closes back to the wallet, and native balance increases after fees.",
+      "predictionMatched": true
+    }
+  ]
+}

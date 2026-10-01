@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "scope": "built production server with explicit demo/paper opt-in; in-memory fixtures; no staging DB writes",
+  "scamStatus": "REJECTED",
+  "wifStatus": "ACCEPTED_PAPER",
+  "orders": 1,
+  "duplicate": {
+    "status": 400,
+    "error": "Proposal already paper-executed"
+  },
+  "csrfStatus": 403,
+  "liveTradingAllowed": false,
+  "canBroadcast": false,
+  "uiChecks": [
+    "explicit demo initialization",
+    "SCAMX rejection",
+    "WIF paper fill visible",
+    "wallet panel",
+    "strategy lab backtest panel",
+    "demo alert rule creation"
+  ]
+}

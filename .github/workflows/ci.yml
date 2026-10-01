@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_USER: sat
           POSTGRES_PASSWORD: sat
@@ -24,7 +24,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://sat:sat@127.0.0.1:5432/sat_test
+      SENTINEL_TEST_DATABASE_URL: postgres://sat:sat@127.0.0.1:5432/sat_test
       DEMO_MODE: "true"
       OPERATING_MODE: PAPER
     steps:
@@ -78,3 +78,13 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Playwright critical flow
         run: pnpm exec playwright test
+
+  mac-release:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL 17
+        run: brew install postgresql@17
+      - name: Verify Mac database and backup tooling
+        run: PYTHONDONTWRITEBYTECODE=1 SENTINEL_PG_BIN="$(brew --prefix postgresql@17)/bin" python3 -m unittest tests/test_mac_release.py -v

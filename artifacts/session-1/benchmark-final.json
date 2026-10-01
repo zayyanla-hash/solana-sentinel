@@ -1,0 +1,110 @@
+{
+  "name": "synthetic-offline-ingestion",
+  "version": 1,
+  "at": "2026-10-01T03:35:44.884Z",
+  "commit": "990977b24f8bdc6665d3942717208e13d4b44065",
+  "trackedChanges": [],
+  "environment": {
+    "node": "v26.9.0",
+    "os": "darwin",
+    "release": "24.3.0",
+    "arch": "arm64",
+    "cpu": "Apple M3",
+    "logicalCpus": 8
+  },
+  "conditions": "Synthetic repeated USDC->token shape; in-process normalization/classification and duplicate replay. No RPC/WSS/mainnet traffic. Latencies exclude acquisition, network and durable writes. Archive timings use local fsync+rename. RSS is sampled at run boundaries, not a continuous peak; no forced GC.",
+  "runs": [
+    {
+      "run": 1,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 84.37774999999999,
+      "eventsPerSecond": 59257.3279093126,
+      "p50Ms": 0.011083000000013499,
+      "p95Ms": 0.02400000000000091,
+      "p99Ms": 0.08562499999999318,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 2,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 68.421625,
+      "eventsPerSecond": 73076.31176546888,
+      "p50Ms": 0.010834000000016886,
+      "p95Ms": 0.014958000000007132,
+      "p99Ms": 0.0449169999999981,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 3,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 62.568291999999985,
+      "eventsPerSecond": 79912.6816503158,
+      "p50Ms": 0.010124999999959527,
+      "p95Ms": 0.012083000000018274,
+      "p99Ms": 0.03808300000002873,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 4,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 58.64545800000002,
+      "eventsPerSecond": 85258.09449727545,
+      "p50Ms": 0.009749999999996817,
+      "p95Ms": 0.011208000000010543,
+      "p99Ms": 0.03491600000000972,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    },
+    {
+      "run": 5,
+      "events": 5000,
+      "duplicateReplayEvents": 5000,
+      "durationMs": 56.60149999999999,
+      "eventsPerSecond": 88336.8815314082,
+      "p50Ms": 0.009667000000035841,
+      "p95Ms": 0.011500000000012278,
+      "p99Ms": 0.01675000000000182,
+      "duplicatesSuppressed": 5000,
+      "errors": 0,
+      "unknown": 0
+    }
+  ],
+  "archive": {
+    "uniqueTrades": 5000,
+    "concurrentDuplicateCallers": 32,
+    "upstreamCallsForBurst": 1,
+    "firstCommitMs": 317.264042,
+    "restartReplayMs": 208.7777920000001,
+    "replayDuplicatedTrades": 0,
+    "checkpoint": {
+      "completedAt": "2026-10-01T03:35:44.751Z",
+      "savedAt": "2026-10-01T03:35:44.751Z",
+      "tradeHighWater": {
+        "signature": "af6fcfb38a6087cbbea41444b6f9ebece329616616e66830d67aa25cd03e1470be837cebb024ee5b15b8da3f008582b3591a8ffcb5e902db4fc81bb3c4d44804",
+        "timestamp": "2023-11-14T23:36:39.000Z"
+      }
+    }
+  },
+  "memoryBytes": {
+    "rssStart": 90128384,
+    "rssEnd": 288260096,
+    "rssMaxSampled": 288260096,
+    "heapStart": 14804368,
+    "heapEnd": 144107048
+  },
+  "cpuMicroseconds": {
+    "user": 969201,
+    "system": 114047
+  }
+}

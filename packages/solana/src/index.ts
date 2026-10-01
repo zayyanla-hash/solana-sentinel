@@ -1,5 +1,7 @@
 import type { OnChainRiskInput } from "@sat/token-risk";
 import { getDemoCandidates } from "@sat/shared";
+import { requestJson } from "./http";
+import { setProviderHealth } from "@sat/observability";
 
 export interface OnChainProvider {
   readonly name: string;
@@ -22,7 +24,12 @@ export const UNKNOWN_ONCHAIN_RISK: OnChainRiskInput = {
   topHolderConcentrationPct: null,
   top5HolderConcentrationPct: null,
   top10HolderConcentrationPct: null,
+  top20HolderConcentrationPct: null,
   exitLiquidityUsd: null,
+  jupiterVerified: null,
+  jupiterOrganicScore: null,
+  creatorHoldingPct: null,
+  lpConcentrationPct: null,
   estimatedPriceImpactPct: null,
   metadataQuality: null,
 };
@@ -112,13 +119,13 @@ export function parseMintExtensions(ext: MintExtensions): {
 export function concentrationFromLargestAccounts(
   accounts: Array<{ amount?: string; uiAmount?: number | null; uiAmountString?: string }>,
   supplyRaw: string | number | null,
-): { top5: number | null; top10: number | null; topN: number | null } {
+): { top5: number | null; top10: number | null; top20: number | null; topN: number | null } {
   if (supplyRaw == null) {
-    return { top5: null, top10: null, topN: null };
+    return { top5: null, top10: null, top20: null, topN: null };
   }
   const supply = typeof supplyRaw === "string" ? Number(supplyRaw) : Number(supplyRaw);
   if (!Number.isFinite(supply) || supply <= 0) {
-    return { top5: null, top10: null, topN: null };
+    return { top5: null, top10: null, top20: null, topN: null };
   }
   const amounts = accounts
     .map((a) => {
@@ -134,12 +141,13 @@ export function concentrationFromLargestAccounts(
     })
     .filter((n) => n > 0)
     .sort((a, b) => b - a);
-  if (!amounts.length) return { top5: null, top10: null, topN: null };
+  if (!amounts.length) return { top5: null, top10: null, top20: null, topN: null };
   const pct = (n: number) =>
     Math.min(100, (amounts.slice(0, n).reduce((s, x) => s + x, 0) / supply) * 100);
   return {
     top5: pct(5),
     top10: pct(10),
+    top20: pct(20),
     topN: pct(amounts.length),
   };
 }
@@ -163,6 +171,7 @@ export class DemoOnChainProvider implements OnChainProvider {
         topHolderConcentrationPct: 92,
         top5HolderConcentrationPct: 88,
         top10HolderConcentrationPct: 92,
+        top20HolderConcentrationPct: 96,
         exitLiquidityUsd: 3_000,
         estimatedPriceImpactPct: 18,
         metadataQuality: 0.2,
@@ -179,6 +188,7 @@ export class DemoOnChainProvider implements OnChainProvider {
       topHolderConcentrationPct: 28,
       top5HolderConcentrationPct: 22,
       top10HolderConcentrationPct: 28,
+      top20HolderConcentrationPct: 34,
       exitLiquidityUsd: demo.liquidityUsd ?? 1_000_000,
       estimatedPriceImpactPct: 0.35,
       metadataQuality: 0.85,
@@ -200,7 +210,6 @@ export class HeliusOnChainProvider implements OnChainProvider {
   constructor(
     private readonly apiKey: string,
     private readonly rpcUrl?: string,
-    private readonly fallback = new DemoOnChainProvider(),
   ) {}
 
   private endpoint(): string {
@@ -251,6 +260,7 @@ export class HeliusOnChainProvider implements OnChainProvider {
 
       let top5: number | null = null;
       let top10: number | null = null;
+      let top20: number | null = null;
       let topN: number | null = null;
       try {
         const [largest, supply] = await Promise.all([
@@ -270,10 +280,12 @@ export class HeliusOnChainProvider implements OnChainProvider {
         const conc = concentrationFromLargestAccounts(accounts, supplyAmount ?? null);
         top5 = conc.top5;
         top10 = conc.top10;
+        top20 = conc.top20;
         topN = conc.topN;
       } catch {
         top5 = null;
         top10 = null;
+        top20 = null;
         topN = null;
       }
 
@@ -288,13 +300,12 @@ export class HeliusOnChainProvider implements OnChainProvider {
         topHolderConcentrationPct: top5 ?? topN,
         top5HolderConcentrationPct: top5,
         top10HolderConcentrationPct: top10,
+        top20HolderConcentrationPct: top20,
         exitLiquidityUsd: null,
         estimatedPriceImpactPct: null,
         metadataQuality,
       };
     } catch {
-      const knownDemo = getDemoCandidates().some((c) => c.mint === mint);
-      if (knownDemo) return this.fallback.getTokenRiskInputs(mint);
       return { ...UNKNOWN_ONCHAIN_RISK };
     }
   }
@@ -307,18 +318,24 @@ export class HeliusOnChainProvider implements OnChainProvider {
       method === "getAsset"
         ? { jsonrpc: "2.0", id: `sat-${method}`, method, params }
         : { jsonrpc: "2.0", id: `sat-${method}`, method, params };
-    const res = await fetch(this.endpoint(), {
+    const started = Date.now();
+    try {
+    const response = await requestJson(this.endpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Helius HTTP ${res.status}`);
-    const json = (await res.json()) as {
+    const json = response.value as {
       result?: Record<string, unknown>;
       error?: { message?: string };
     };
-    if (json.error) throw new Error(json.error.message ?? method);
+    if (!json || typeof json !== "object" || Array.isArray(json) || json.error || !json.result || typeof json.result !== "object") throw new Error("helius-rpc-invalid-response");
+    setProviderHealth({ name: this.name, status: "healthy", isDemo: false, lastSuccessAt: new Date().toISOString(), lastError: null, latencyMs: Date.now() - started, dataAgeMs: null });
     return json;
+    } catch {
+      setProviderHealth({ name: this.name, status: "degraded", isDemo: false, lastSuccessAt: null, lastError: "helius-rpc-request-failed", latencyMs: Date.now() - started, dataAgeMs: null });
+      throw new Error("helius-rpc-request-failed");
+    }
   }
 }
 
@@ -332,3 +349,37 @@ export const KNOWN_PROGRAMS = {
   TOKEN: TOKEN_PROGRAM,
   TOKEN_2022: TOKEN_2022_PROGRAM,
 } as const;
+
+export {
+  DemoWalletHistoryProvider,
+  FixtureWalletHistoryProvider,
+  HeliusWalletHistoryProvider,
+  createWalletHistoryProvider,
+  createLiveWalletHistoryProvider,
+  type WalletHistoryProvider,
+  type WalletHistoryResult,
+} from "./wallet-history";
+export {
+  HeliusParsedEventsProvider,
+  HeliusEnhancedTransactionsProvider,
+  CompositeHeliusHistoryProvider,
+} from "./parsed-events";
+export {
+  fetchJupiterTokenIntel,
+  EMPTY_JUPITER_INTEL,
+  type JupiterTokenIntel,
+} from "./jupiter-token";
+export { parseHeliusEnhancedTx, isQuoteMint, USDT } from "./helius-swap";
+export { tradesAsOf } from "./replay";
+export { DurableWalletHistoryProvider, HistoryStoreError, type DurableHistoryOptions } from "./durable-history";
+export { ReadOnlyRpcReader, interpretRpcTransaction, isTransactionSignature, MAINNET_GENESIS, type SignatureRow, type RpcInterpretation } from "./rpc-reader";
+export { boundedInteger, SafeHttpError } from "./http";
+export {
+  normalizeParsedEventsItem,
+  normalizeEnhancedTx,
+  normalizeStreamMessage,
+  classifyWalletActivity,
+  dedupeTrades,
+  parseParsedEventsItem,
+  compareNormalized,
+} from "./normalize";

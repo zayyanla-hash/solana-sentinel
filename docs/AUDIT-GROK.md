@@ -1,5 +1,7 @@
 # Adversarial audit — SAT Research (Grok 4.6)
 
+Historical V1 audit. Product is now branded Solana Sentinel.
+
 Date: 2026-09-08  
 Auditor branch: `cursor/audit-safety-gates-d1d1`  
 Base at start of this pass: `cursor/final-qa-fixes-6a3e` @ `f7e5bec` (prior QA already hard-disabled `isLiveTradingAllowed()`).  

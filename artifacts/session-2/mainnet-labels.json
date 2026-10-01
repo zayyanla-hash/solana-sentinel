@@ -1,0 +1,356 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-01",
+  "scope": "13 captured public finalized transactions; fee-payer wallet perspective; no random sample or broad performance estimate",
+  "labelStatus": "MANUAL_EVIDENCE_REVIEW",
+  "accuracy": null,
+  "baselinePredictions": [
+    {
+      "signature": "58WkTRFjD2a6t4ULsECNR4WXuSgNhELgujVGHNvTFB1s1Avdpv2ad9RwW3Xfnw1SoQA2QahYHLdNyDWCBRRK78up",
+      "wallet": "77777nPhGvFUVAj6uq8MGyLneBt4SMwCScYZDzzztdsa",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "3oVfkXAghkdE4dHAyJL9e4cxRMWWhjtBKdGHtTzS7ZFYyiK48P5jySx2gAsDmRtm7SFZk5uBbHE8f2odzayXLsZb",
+      "wallet": "CK5nCzuNAmKP6Bkh4rfFrj47Vgx46TtYjeUwZNSkn3Qs",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "31nWgoSACaQKTNe5bUYsomXCBRV3sKKqzA1Q6nKoEiRFud2NXnJk3NGaUck2zQaRQkr349TZJ2SHMe6rXLkbJPCE",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "3B9UCxyesFNaPu71zMaLt1oeViLZf2uYQAQDXTwZMwo2i8MkHMCiE7tGgdmKqfZHcYrnQ582nHtUKdVJo7ffLDk5",
+      "wallet": "Eq4tzA38NmPR2R9wVmMVAxgm7XCidnkGo8U7gFGTeSQY",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "2voQzRH6b3wVdAQqedTskzVvhP8CcwGSnC52EDYKGSHEGzwUHA9WHpckE5vb14gb6cHVFNRwZ3xpHruRtSdSfXYG",
+      "wallet": "77777nPhGvFUVAj6uq8MGyLneBt4SMwCScYZDzzztdsa",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "3be6ZfQmqayVNuugGtVNviZR8KBoy9zgmrbz8NUejqEWF6er5k1F6dpAtmxNQ3gZjDQ6XCZSkXdGZ5gaxKrpQDEx",
+      "wallet": "gasBidSWW5zmwXs3gn8TG2ijzKkrwpyM7ucwjgDQst6",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-jupiter-instruction",
+      "trades": []
+    },
+    {
+      "signature": "4SAvk8Y7Y4Uw1T5fd6YAwMT4sYh5xBMyzQBgVnaZHUvMteKcCnBaioDiFJpFKWFEkNGTVMNsJ4g8jmKeNYXNdN1g",
+      "wallet": "4rx2NubDwDPE2r821nmnmXQuSz78di75UNFWX3zQBtGo",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "NWm6pKAabtWjQ9rKMS114SSB2DoAW2ah7Bjpby8LGZYeo5G8cT98KYccdViQEYVGU7XEP1xDAXdG8zPxs5XnVjk",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "outcome": "FAILED",
+      "reason": "onchain-failed",
+      "trades": []
+    },
+    {
+      "signature": "y4CMCKdhsKCG9wL91z8D1wJE8cF3MqYV7oc9XToy4UfZdN5qURLBZ8tu9NicVdf7n9ztTvNN15TE7pDg9BEvdKB",
+      "wallet": "MenuxY5yMzJkeKZTvDTcovjh4fuJHMHhJyjJ5v5LzG6",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "X4mPTX8fLCR2CWh4muw8LYtVYjBx3gpmE3nRgdG4wzGqMSApkVW8D2LBmPKm89X5s4S841aFAYphoJuHF9EUgzR",
+      "wallet": "GxDC9e7SP9mzhDo4re5HbpLa2RW7gB9DtmThx4i4pXSq",
+      "outcome": "UNKNOWN",
+      "reason": "unsupported-or-combined-instructions",
+      "trades": []
+    },
+    {
+      "signature": "4SDf1sd6kquEyZiYdcQmKa2GqBEiSPeyWJVqm8Cthie4ykoAXzVVjZm4dJH57zFZm9cJ4QQ1HMwHh4woWND8rV4K",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "outcome": "FAILED",
+      "reason": "onchain-failed",
+      "trades": []
+    },
+    {
+      "signature": "66HEMqqZnbE1ETFpxiEGWrxY9Goio9qo7E47vaGVDpfWbB54KZWiWURcrmfxQUVFJoJe6SfxYRk7fjXRyh1z96Ge",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "outcome": "FAILED",
+      "reason": "onchain-failed",
+      "trades": []
+    },
+    {
+      "signature": "31doDxj7cdyGac2N3gDZePKhi6Z7hauJ2etUYKh8xGj1KDDh68mJuPgiYBzruXNF7RX7icjFwipPSFjw7XpM7F9r",
+      "wallet": "En3NPq8o9Cynf1Q3eP69AqZmPKmBaDugYnE832o2YuzP",
+      "outcome": "FAILED",
+      "reason": "onchain-failed",
+      "trades": []
+    }
+  ],
+  "labels": [
+    {
+      "signature": "58WkTRFjD2a6t4ULsECNR4WXuSgNhELgujVGHNvTFB1s1Avdpv2ad9RwW3Xfnw1SoQA2QahYHLdNyDWCBRRK78up",
+      "wallet": "77777nPhGvFUVAj6uq8MGyLneBt4SMwCScYZDzzztdsa",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.94,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[4]",
+        "raw.meta.innerInstructions[index=3]",
+        "raw.meta.preTokenBalances",
+        "raw.meta.postTokenBalances"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/58WkTRFjD2a6t4ULsECNR4WXuSgNhELgujVGHNvTFB1s1Avdpv2ad9RwW3Xfnw1SoQA2QahYHLdNyDWCBRRK78up",
+      "includeInPrecision": false,
+      "reason": "Additional top-level token transfer and multiple pool legs; wallet WSOL delta is small and cannot be attributed to a single buy or sell.",
+      "sourceArtifact": "mainnet-unreviewed.json",
+      "sourceIndex": 0
+    },
+    {
+      "signature": "3oVfkXAghkdE4dHAyJL9e4cxRMWWhjtBKdGHtTzS7ZFYyiK48P5jySx2gAsDmRtm7SFZk5uBbHE8f2odzayXLsZb",
+      "wallet": "CK5nCzuNAmKP6Bkh4rfFrj47Vgx46TtYjeUwZNSkn3Qs",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.88,
+      "evidencePaths": [
+        "raw.meta.preTokenBalances[accountIndex=2]",
+        "raw.meta.postTokenBalances[accountIndex=7]",
+        "raw.meta.innerInstructions[index=2]",
+        "raw.meta.innerInstructions[index=3]"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/3oVfkXAghkdE4dHAyJL9e4cxRMWWhjtBKdGHtTzS7ZFYyiK48P5jySx2gAsDmRtm7SFZk5uBbHE8f2odzayXLsZb",
+      "includeInPrecision": false,
+      "reason": "Token-2022 input and CASH output account creation/fee effects make the wallet output ambiguous; no defensible nonquote quantity.",
+      "sourceArtifact": "mainnet-unreviewed.json",
+      "sourceIndex": 1
+    },
+    {
+      "signature": "31nWgoSACaQKTNe5bUYsomXCBRV3sKKqzA1Q6nKoEiRFud2NXnJk3NGaUck2zQaRQkr349TZJ2SHMe6rXLkbJPCE",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "HMjK2dcF8NdCB8SDfSjBcHHBEAut97XfPVaNLdfKpump",
+        "qty": 48537.487223
+      },
+      "confidence": 0.98,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[2].parsed.info",
+        "raw.transaction.message.instructions[3].accounts[1..3]",
+        "raw.transaction.message.instructions[4].parsed.info",
+        "raw.meta.preTokenBalances[accountIndex=5]",
+        "raw.meta.postTokenBalances[accountIndex=5]",
+        "raw.meta.innerInstructions[index=3].instructions[2].parsed.info",
+        "raw.meta.innerInstructions[index=3].instructions[4].parsed.info",
+        "raw.meta.logMessages[Pump SellV2]",
+        "raw.meta.preBalances",
+        "raw.meta.postBalances",
+        "raw.meta.fee"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/31nWgoSACaQKTNe5bUYsomXCBRV3sKKqzA1Q6nKoEiRFud2NXnJk3NGaUck2zQaRQkr349TZJ2SHMe6rXLkbJPCE",
+      "includeInPrecision": true,
+      "reason": "Wallet-authorized TransferChecked moves exactly 48,537.487223 HMjK2 from its owned route source; Jupiter route calls Pump SellV2, temporary wallet-owned WSOL ATA is created and closed to wallet. Native balance rises by 1,647,382 lamports after the 5,500 fee, matching the sole external curve debit less fee-account credits. This labels the token sale, not profit or price.",
+      "sourceArtifact": "mainnet-unreviewed.json",
+      "sourceIndex": 2
+    },
+    {
+      "signature": "3B9UCxyesFNaPu71zMaLt1oeViLZf2uYQAQDXTwZMwo2i8MkHMCiE7tGgdmKqfZHcYrnQ582nHtUKdVJo7ffLDk5",
+      "wallet": "Eq4tzA38NmPR2R9wVmMVAxgm7XCidnkGo8U7gFGTeSQY",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.9,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[4]",
+        "raw.meta.preTokenBalances[accountIndex=2]",
+        "raw.meta.postTokenBalances[accountIndex=2]",
+        "raw.meta.preBalances[0]",
+        "raw.meta.postBalances[0]"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/3B9UCxyesFNaPu71zMaLt1oeViLZf2uYQAQDXTwZMwo2i8MkHMCiE7tGgdmKqfZHcYrnQ582nHtUKdVJo7ffLDk5",
+      "includeInPrecision": false,
+      "reason": "Route closes a temporary WSOL account and changes USDC plus native SOL; quote asset movement has no supported nonquote trade label in this wallet view.",
+      "sourceArtifact": "mainnet-unreviewed.json",
+      "sourceIndex": 3
+    },
+    {
+      "signature": "2voQzRH6b3wVdAQqedTskzVvhP8CcwGSnC52EDYKGSHEGzwUHA9WHpckE5vb14gb6cHVFNRwZ3xpHruRtSdSfXYG",
+      "wallet": "77777nPhGvFUVAj6uq8MGyLneBt4SMwCScYZDzzztdsa",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.94,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[4]",
+        "raw.meta.innerInstructions[index=3]"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/2voQzRH6b3wVdAQqedTskzVvhP8CcwGSnC52EDYKGSHEGzwUHA9WHpckE5vb14gb6cHVFNRwZ3xpHruRtSdSfXYG",
+      "includeInPrecision": false,
+      "reason": "Additional top-level token transfer and multiple inner legs prevent isolated route attribution.",
+      "sourceArtifact": "mainnet-unreviewed.json",
+      "sourceIndex": 4
+    },
+    {
+      "signature": "3be6ZfQmqayVNuugGtVNviZR8KBoy9zgmrbz8NUejqEWF6er5k1F6dpAtmxNQ3gZjDQ6XCZSkXdGZ5gaxKrpQDEx",
+      "wallet": "gasBidSWW5zmwXs3gn8TG2ijzKkrwpyM7ucwjgDQst6",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.95,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[2].data",
+        "raw.transaction.message.instructions[2].accounts",
+        "raw.meta.innerInstructions[index=2]"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/3be6ZfQmqayVNuugGtVNviZR8KBoy9zgmrbz8NUejqEWF6er5k1F6dpAtmxNQ3gZjDQ6XCZSkXdGZ5gaxKrpQDEx",
+      "includeInPrecision": false,
+      "reason": "The instruction discriminator is outside the supported isolated Jupiter route set and wallet is not the visible route authority.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 0
+    },
+    {
+      "signature": "4SAvk8Y7Y4Uw1T5fd6YAwMT4sYh5xBMyzQBgVnaZHUvMteKcCnBaioDiFJpFKWFEkNGTVMNsJ4g8jmKeNYXNdN1g",
+      "wallet": "4rx2NubDwDPE2r821nmnmXQuSz78di75UNFWX3zQBtGo",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.95,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[4]",
+        "raw.meta.innerInstructions[index=3]",
+        "raw.meta.preTokenBalances",
+        "raw.meta.postTokenBalances"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/4SAvk8Y7Y4Uw1T5fd6YAwMT4sYh5xBMyzQBgVnaZHUvMteKcCnBaioDiFJpFKWFEkNGTVMNsJ4g8jmKeNYXNdN1g",
+      "includeInPrecision": false,
+      "reason": "Extra top-level token transfer and several pool legs make net wallet token movement insufficient for isolated directional attribution.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 1
+    },
+    {
+      "signature": "NWm6pKAabtWjQ9rKMS114SSB2DoAW2ah7Bjpby8LGZYeo5G8cT98KYccdViQEYVGU7XEP1xDAXdG8zPxs5XnVjk",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "confidence": 0.99,
+      "evidencePaths": [
+        "raw.meta.err"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/NWm6pKAabtWjQ9rKMS114SSB2DoAW2ah7Bjpby8LGZYeo5G8cT98KYccdViQEYVGU7XEP1xDAXdG8zPxs5XnVjk",
+      "includeInPrecision": false,
+      "reason": "Transaction meta.err is non-null; no settled trade is recorded.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 2
+    },
+    {
+      "signature": "y4CMCKdhsKCG9wL91z8D1wJE8cF3MqYV7oc9XToy4UfZdN5qURLBZ8tu9NicVdf7n9ztTvNN15TE7pDg9BEvdKB",
+      "wallet": "MenuxY5yMzJkeKZTvDTcovjh4fuJHMHhJyjJ5v5LzG6",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.96,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[3]",
+        "raw.meta.innerInstructions[index=2]",
+        "raw.meta.preBalances[0]",
+        "raw.meta.postBalances[0]"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/y4CMCKdhsKCG9wL91z8D1wJE8cF3MqYV7oc9XToy4UfZdN5qURLBZ8tu9NicVdf7n9ztTvNN15TE7pDg9BEvdKB",
+      "includeInPrecision": false,
+      "reason": "Top-level native transfer/tip accompanies a multi-leg Jupiter route; do not turn the native delta into swap output.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 3
+    },
+    {
+      "signature": "X4mPTX8fLCR2CWh4muw8LYtVYjBx3gpmE3nRgdG4wzGqMSApkVW8D2LBmPKm89X5s4S841aFAYphoJuHF9EUgzR",
+      "wallet": "GxDC9e7SP9mzhDo4re5HbpLa2RW7gB9DtmThx4i4pXSq",
+      "protocol": "OTHER",
+      "expected": {
+        "outcome": "UNKNOWN"
+      },
+      "confidence": 0.95,
+      "evidencePaths": [
+        "raw.transaction.message.instructions[3]",
+        "raw.meta.innerInstructions[index=3]"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/X4mPTX8fLCR2CWh4muw8LYtVYjBx3gpmE3nRgdG4wzGqMSApkVW8D2LBmPKm89X5s4S841aFAYphoJuHF9EUgzR",
+      "includeInPrecision": false,
+      "reason": "Primary top-level program is not Jupiter and inner route includes multiple protocols and mint/burn effects.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 4
+    },
+    {
+      "signature": "4SDf1sd6kquEyZiYdcQmKa2GqBEiSPeyWJVqm8Cthie4ykoAXzVVjZm4dJH57zFZm9cJ4QQ1HMwHh4woWND8rV4K",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "confidence": 0.99,
+      "evidencePaths": [
+        "raw.meta.err"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/4SDf1sd6kquEyZiYdcQmKa2GqBEiSPeyWJVqm8Cthie4ykoAXzVVjZm4dJH57zFZm9cJ4QQ1HMwHh4woWND8rV4K",
+      "includeInPrecision": false,
+      "reason": "Transaction meta.err is non-null; no settled trade is recorded.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 5
+    },
+    {
+      "signature": "66HEMqqZnbE1ETFpxiEGWrxY9Goio9qo7E47vaGVDpfWbB54KZWiWURcrmfxQUVFJoJe6SfxYRk7fjXRyh1z96Ge",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "confidence": 0.99,
+      "evidencePaths": [
+        "raw.meta.err"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/66HEMqqZnbE1ETFpxiEGWrxY9Goio9qo7E47vaGVDpfWbB54KZWiWURcrmfxQUVFJoJe6SfxYRk7fjXRyh1z96Ge",
+      "includeInPrecision": false,
+      "reason": "Transaction meta.err is non-null; no settled trade is recorded.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 6
+    },
+    {
+      "signature": "31doDxj7cdyGac2N3gDZePKhi6Z7hauJ2etUYKh8xGj1KDDh68mJuPgiYBzruXNF7RX7icjFwipPSFjw7XpM7F9r",
+      "wallet": "En3NPq8o9Cynf1Q3eP69AqZmPKmBaDugYnE832o2YuzP",
+      "protocol": "JUPITER",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "confidence": 0.99,
+      "evidencePaths": [
+        "raw.meta.err"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/31doDxj7cdyGac2N3gDZePKhi6Z7hauJ2etUYKh8xGj1KDDh68mJuPgiYBzruXNF7RX7icjFwipPSFjw7XpM7F9r",
+      "includeInPrecision": false,
+      "reason": "Transaction meta.err is non-null; no settled trade is recorded.",
+      "sourceArtifact": "mainnet-second-sample.json",
+      "sourceIndex": 7
+    }
+  ]
+}

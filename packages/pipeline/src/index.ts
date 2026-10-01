@@ -12,6 +12,7 @@ import {
   nowIso,
   createEvent,
   isLiveTradingAllowed,
+  isPublicDemo,
   ExecutionPlanSchema,
   PROPOSAL_TTL_MS,
 } from "@sat/shared";
@@ -20,12 +21,15 @@ import type { HistoricalBars } from "@sat/signals";
 import { DiscoveryService } from "@sat/discovery";
 import { computeAllSignals, scoreOpportunity } from "@sat/signals";
 import { assessTokenRisk } from "@sat/token-risk";
+import { fetchJupiterTokenIntel } from "@sat/solana";
 import { PolicyEngine } from "@sat/policy-engine";
 import { RiskEngine } from "@sat/risk-engine";
 import { proposeSizeUsd, markPositions } from "@sat/portfolio";
 import { PaperTradingEngine, applyFillToPortfolio } from "@sat/paper-trading";
 import { runExperimentReplay } from "@sat/experiments";
 import { getProviders } from "./providers";
+import { generateSmartMoneySignals } from "./intelligence";
+import { overallStatus, setProviderHealth, getProviderHealth } from "@sat/observability";
 import {
   decideProposalStatus,
   assertStoredGates,
@@ -33,7 +37,25 @@ import {
   assertFreshRisk,
 } from "./gates";
 
-export { getProviders, resetProvidersForTests } from "./providers";
+export { getProviders, resetProvidersForTests, closeProviders } from "./providers";
+export {
+  listWalletIntelligence,
+  analyzeWallet,
+  walletGraphForDemo,
+  generateSmartMoneySignals,
+  runStrategyLab,
+  createAlertRule,
+  emitTestAlert,
+  getAlertEngine,
+  getPersistentAlertEngine,
+  resetIntelligenceForTests,
+  addWatchlistItem,
+  removeWatchlistItem,
+  portfolioRiskSnapshot,
+} from "./intelligence";
+export { PollingMonitor, persistMonitorScore, dispatchPendingTradeAlerts, type MonitorReader, type PollResult } from "./monitor";
+export { ReadOnlyRpcReader } from "@sat/solana";
+export { verifyLiveWallet, compareWalletProviders } from "./verify-wallet";
 export {
   decideProposalStatus,
   assertStoredGates,
@@ -77,11 +99,12 @@ export async function runDiscoveryCycle(db: Database = getDatabase()) {
 async function loadHistorical(mint: string): Promise<HistoricalBars | undefined> {
   const { market } = getProviders();
   try {
-    const [b5, b15, b1h, b4h, sol5] = await Promise.all([
+    const [b5, b15, b1h, b4h, b1d, sol5] = await Promise.all([
       market.getOhlcv(mint, "5m", 120),
       market.getOhlcv(mint, "15m", 96),
       market.getOhlcv(mint, "1h", 72),
       market.getOhlcv(mint, "4h", 48),
+      market.getOhlcv(mint, "1d", 90),
       market.getOhlcv(WSOL, "5m", 120),
     ]);
     const empty = ![b5, b15, b1h, b4h].some((b) => b.length);
@@ -91,6 +114,7 @@ async function loadHistorical(mint: string): Promise<HistoricalBars | undefined>
       "15m": b15,
       "1h": b1h,
       "4h": b4h,
+      "1d": b1d,
       sol: { "5m": sol5 },
       asOfMs: Date.now(),
     };
@@ -118,7 +142,12 @@ export async function evaluateMint(
   if (!asset) return null;
 
   const riskInputs = await onchain.getTokenRiskInputs(mint);
-  const tokenRisk = assessTokenRisk(asset, riskInputs);
+  const jup = await fetchJupiterTokenIntel(mint);
+  const tokenRisk = assessTokenRisk(asset, {
+    ...riskInputs,
+    jupiterVerified: jup.verified,
+    jupiterOrganicScore: jup.organicScore,
+  });
   await db.addTokenRisk(tokenRisk);
 
   const policyEngine = new PolicyEngine(DEFAULT_POLICY_CONFIG);
@@ -369,6 +398,8 @@ export async function executePaperProposal(
       proposalId,
       proposal: accepted,
       order,
+      expectedPortfolio: state.portfolio,
+      expectedPositions: state.positions,
       snapshot: applied.snapshot,
       positions: applied.positions,
       events: [...events, ...applied.events],
@@ -395,9 +426,13 @@ export async function markToMarket(db: Database = getDatabase()) {
     if (asset?.priceUsd != null) marks[p.mint] = asset.priceUsd;
   }
   const marked = markPositions(state.positions, marks, state.portfolio);
-  await db.setPositions(marked.positions);
-  await db.setPortfolio(marked.snapshot);
-  await db.pushEquity(marked.snapshot.navUsd);
+  await db.recordMarkToMarket({
+    expectedPortfolio: state.portfolio,
+    expectedPositions: state.positions,
+    positions: marked.positions,
+    snapshot: marked.snapshot,
+    navUsd: marked.snapshot.navUsd,
+  });
   return marked.snapshot;
 }
 
@@ -408,6 +443,7 @@ export async function runFullResearchPass(db: Database = getDatabase()) {
     const p = await evaluateMint(c.mint, db);
     if (p) proposals.push(p);
   }
+  await generateSmartMoneySignals(db);
   return proposals;
 }
 
@@ -438,15 +474,64 @@ export async function runDemoExperiment(db: Database = getDatabase()) {
 
 export async function getSystemHealth(db: Database = getDatabase()) {
   const state = await db.getState();
-  const { market, onchain, execution } = getProviders();
+  const { market, onchain, execution, research, walletHistory } = getProviders();
   const demoMode = market.isDemo || onchain.isDemo || Boolean(state.candidates.find((c) => c.isDemo));
+  const lastDiscovery = state.events.find((e) => e.type === "TOKEN_DISCOVERED")?.timestamp ?? null;
+  const lastPaper = state.orders[0]?.createdAt ?? null;
+  const providerRows = [
+    {
+      name: market.name,
+      status: market.isDemo ? ("demo_fallback" as const) : ("healthy" as const),
+      isDemo: market.isDemo,
+      lastSuccessAt: lastDiscovery,
+      lastError: null,
+      latencyMs: null,
+      dataAgeMs: null,
+    },
+    {
+      name: onchain.name,
+      status: onchain.isDemo ? ("demo_fallback" as const) : ("healthy" as const),
+      isDemo: onchain.isDemo,
+      lastSuccessAt: lastDiscovery,
+      lastError: null,
+      latencyMs: null,
+      dataAgeMs: null,
+    },
+    {
+      name: execution.name,
+      status: execution.isDemo ? ("demo_fallback" as const) : ("healthy" as const),
+      isDemo: execution.isDemo,
+      lastSuccessAt: lastPaper,
+      lastError: null,
+      latencyMs: null,
+      dataAgeMs: null,
+    },
+  ];
+  const observedRows = providerRows.map((p) => {
+    if (p.isDemo) return p;
+    const observed = getProviderHealth(p.name);
+    if (observed) return observed;
+    return { ...p, status: "degraded" as const, lastSuccessAt: null, lastError: "No successful request observed" };
+  });
+  for (const p of observedRows) setProviderHealth(p);
+  const status = overallStatus(observedRows);
   return {
     operatingMode: getOperatingMode(),
     liveTradingAllowed: isLiveTradingAllowed(),
     canBroadcast: false as const,
     persistence: db.mode,
+    databaseStatus: db.mode === "postgres" ? "postgres" : "memory",
     parseErrors: state.parseErrors,
     demoMode,
+    healthStatus: status,
+    publicDemo: isPublicDemo(),
+    marketDataProvider: market.name,
+    onChainProvider: onchain.name,
+    researchProvider: process.env.OPENAI_API_KEY ? "openai-compatible" : "mock",
+    executionProvider: execution.name,
+    lastDiscoveryRun: lastDiscovery,
+    lastPaperExecution: lastPaper,
+    lastEvaluationRun: state.proposals[0]?.createdAt ?? null,
     candidates: state.candidates.length,
     proposals: state.proposals.length,
     openPositions: state.positions.length,
@@ -460,8 +545,13 @@ export async function getSystemHealth(db: Database = getDatabase()) {
       onchain: onchain.name,
       onchainIsDemo: onchain.isDemo,
       execution: execution.name,
+      executionIsDemo: execution.isDemo,
       research: process.env.OPENAI_API_KEY ? "openai-compatible" : "mock",
       researchIsMock: !process.env.OPENAI_API_KEY,
+      researchName: research.constructor?.name ?? "research",
+      walletHistory: walletHistory.name,
+      walletHistoryIsDemo: walletHistory.isDemo,
     },
+    providerHealth: observedRows,
   };
 }

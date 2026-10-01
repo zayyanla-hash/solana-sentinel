@@ -40,6 +40,11 @@ export const SystemEventTypeSchema = z.enum([
   "POSITION_UPDATED",
   "PROVIDER_ERROR",
   "SYSTEM_ERROR",
+  "WALLET_SCORED",
+  "ALERT_EMITTED",
+  "BACKTEST_COMPLETED",
+  "STREAM_STATUS",
+  "USAGE_RECORDED",
 ]);
 export type SystemEventType = z.infer<typeof SystemEventTypeSchema>;
 
@@ -72,7 +77,7 @@ export const CandidateAssetSchema = z.object({
 });
 export type CandidateAsset = z.infer<typeof CandidateAssetSchema>;
 
-export const OhlcvIntervalSchema = z.enum(["1m", "5m", "15m", "1h", "4h"]);
+export const OhlcvIntervalSchema = z.enum(["1m", "5m", "15m", "1h", "4h", "1d"]);
 export type OhlcvInterval = z.infer<typeof OhlcvIntervalSchema>;
 
 /** Provider-agnostic OHLCV bar. `timestamp` is Unix epoch milliseconds. */
@@ -145,8 +150,13 @@ export const TokenRiskAssessmentSchema = z.object({
     estimatedPriceImpactPct: z.number().nullable(),
     top5HolderConcentrationPct: z.number().nullable().optional(),
     top10HolderConcentrationPct: z.number().nullable().optional(),
+    top20HolderConcentrationPct: z.number().nullable().optional(),
     transferHook: z.boolean().nullable().optional(),
     token2022Extensions: z.array(z.string()).nullable().optional(),
+    jupiterVerified: z.boolean().nullable().optional(),
+    jupiterOrganicScore: z.number().min(0).max(100).nullable().optional(),
+    creatorHoldingPct: z.number().nullable().optional(),
+    lpConcentrationPct: z.number().nullable().optional(),
     missingFields: z.array(z.string()).default([]),
   }),
   assessedAt: z.string().datetime(),
@@ -183,14 +193,22 @@ export type OpportunityScore = z.infer<typeof OpportunityScoreSchema>;
 export const ResearchBriefSchema = z.object({
   id: z.string().uuid().optional(),
   mint: SolanaAddressSchema,
-  thesis: z.string(),
-  catalysts: z.array(z.string()),
-  contradictions: z.array(z.string()),
+  thesis: z.string().max(2000),
+  catalysts: z.array(z.string().max(280)).max(8),
+  contradictions: z.array(z.string().max(280)).max(8),
   confidence: z.number().min(0).max(1),
-  sources: z.array(z.string()),
+  sources: z.array(z.string()).max(16),
   isMock: z.boolean(),
   generatedAt: z.string().datetime(),
   model: z.string().optional(),
+  provider: z.string().optional(),
+  inputSnapshotRef: z.string().max(512).optional(),
+  summary: z.string().max(2000).optional(),
+  bullCase: z.array(z.string().max(280)).max(8).optional(),
+  bearCase: z.array(z.string().max(280)).max(8).optional(),
+  riskFactors: z.array(z.string().max(280)).max(8).optional(),
+  unknowns: z.array(z.string().max(280)).max(8).optional(),
+  citations: z.array(z.string().max(280)).max(16).optional(),
 });
 export type ResearchBrief = z.infer<typeof ResearchBriefSchema>;
 
@@ -211,6 +229,17 @@ export const RiskEngineResultSchema = z.object({
 });
 export type RiskEngineResult = z.infer<typeof RiskEngineResultSchema>;
 
+export const ExecutionProviderNameSchema = z.enum([
+  "jupiter",
+  "jupiter-swap-v2",
+  "jupiter-ultra-legacy",
+  "demo",
+]);
+export type ExecutionProviderName = z.infer<typeof ExecutionProviderNameSchema>;
+
+export const ExecutionQualitySchema = z.enum(["HIGH", "MEDIUM", "LOW", "UNKNOWN"]);
+export type ExecutionQuality = z.infer<typeof ExecutionQualitySchema>;
+
 export const ExecutionQuoteSchema = z.object({
   inputMint: SolanaAddressSchema,
   outputMint: SolanaAddressSchema,
@@ -221,10 +250,15 @@ export const ExecutionQuoteSchema = z.object({
   slippageBps: z.number().int().nonnegative(),
   routeLabels: z.array(z.string()).default([]),
   feeEstimateUsd: z.number().nullable(),
-  provider: z.enum(["jupiter", "demo"]),
+  provider: ExecutionProviderNameSchema,
   raw: z.unknown().optional(),
   quotedAt: z.string().datetime(),
   isDemo: z.boolean().default(false),
+  router: z.string().nullable().optional(),
+  priorityFeeLamports: z.number().nullable().optional(),
+  estimatedExecutionQuality: ExecutionQualitySchema.optional(),
+  dataAgeMs: z.number().nonnegative().nullable().optional(),
+  quoteTimestamp: z.string().datetime().optional(),
 });
 export type ExecutionQuote = z.infer<typeof ExecutionQuoteSchema>;
 
@@ -466,4 +500,10 @@ export function assertNotLiveBroadcast(mode: OperatingMode): void {
  */
 export function isLiveTradingAllowed(): boolean {
   return false;
+}
+
+/** Public portfolio demo: anonymous users are read-only. */
+export function isPublicDemo(): boolean {
+  const v = (process.env.PUBLIC_DEMO ?? "").trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
 }

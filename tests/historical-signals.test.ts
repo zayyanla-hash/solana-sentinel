@@ -71,7 +71,9 @@ describe("historical OHLCV signals", () => {
     expect(s.value).toBeCloseTo(((11 - 10) / 10) * 100 - ((101 - 100) / 100) * 100, 5);
     const missing = computeHistoricalRelativeStrength({ "5m": token });
     expect(missing.meta?.reason).toMatch(/NO_BENCHMARK|INSUFFICIENT_DATA/);
-    expect(JSON.stringify(missing)).not.toMatch(/2\.0/);
+    expect(missing.value).toBe(0);
+    expect(missing.meta?.hardcodedBenchmark).toBe(false);
+    expect(missing.meta?.haveSolBars).toBe(0);
   });
 
   it("drops in-progress bars (closed-bar alignment)", () => {

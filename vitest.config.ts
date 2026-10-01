@@ -10,6 +10,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@/lib/request-guard": path.resolve(__dirname, "apps/web/src/lib/request-guard.ts"),
       "@sat/shared": path.resolve(__dirname, "packages/shared/src/index.ts"),
       "@sat/database": path.resolve(__dirname, "packages/database/src/index.ts"),
       "@sat/solana": path.resolve(__dirname, "packages/solana/src/index.ts"),
@@ -26,6 +27,14 @@ export default defineConfig({
       "@sat/analytics": path.resolve(__dirname, "packages/analytics/src/index.ts"),
       "@sat/experiments": path.resolve(__dirname, "packages/experiments/src/index.ts"),
       "@sat/pipeline": path.resolve(__dirname, "packages/pipeline/src/index.ts"),
+      "@sat/wallet-intel": path.resolve(__dirname, "packages/wallet-intel/src/index.ts"),
+      "@sat/wallet-graph": path.resolve(__dirname, "packages/wallet-graph/src/index.ts"),
+      "@sat/backtest": path.resolve(__dirname, "packages/backtest/src/index.ts"),
+      "@sat/alerts": path.resolve(__dirname, "packages/alerts/src/index.ts"),
+      "@sat/entitlements": path.resolve(__dirname, "packages/entitlements/src/index.ts"),
+      "@sat/observability": path.resolve(__dirname, "packages/observability/src/index.ts"),
+      "@sat/streaming": path.resolve(__dirname, "packages/streaming/src/index.ts"),
+      "@sat/x402": path.resolve(__dirname, "packages/x402/src/index.ts"),
     },
   },
 });

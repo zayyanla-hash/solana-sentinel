@@ -140,7 +140,7 @@ describe("P0 invariants", () => {
     const files = roots.flatMap((r) => listTsFiles(r));
     const hits: string[] = [];
     const forbidden =
-      /\b(sendTransaction|signTransaction|signAllTransactions|signAndSendTransaction|Keypair\.fromSecretKey|fromSeed\(|nacl\.sign|tweetnacl)\b/;
+      /\b(sendTransaction|sendRawTransaction|signTransaction|signAllTransactions|signAndSendTransaction|Keypair\.fromSecretKey|fromSeed\(|nacl\.sign|tweetnacl)\b/;
     for (const file of files) {
       const text = readFileSync(file, "utf8");
       for (const [i, line] of text.split("\n").entries()) {

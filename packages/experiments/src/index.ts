@@ -1,4 +1,9 @@
-import { computePerformance, buyAndHoldSeries, type PerformanceMetrics } from "@sat/analytics";
+import {
+  computePerformance,
+  buyAndHoldSeries,
+  equalWeightSeries,
+  type PerformanceMetrics,
+} from "@sat/analytics";
 import {
   DEFAULT_STRATEGY_CONFIG,
   DEFAULT_RISK_CONFIG,
@@ -30,6 +35,7 @@ export interface ExperimentResult {
     solBuyHold: PerformanceMetrics | null;
     btcBuyHold: PerformanceMetrics | null;
     mechanicalMomentum: PerformanceMetrics | null;
+    equalWeightCandidates: PerformanceMetrics | null;
   };
   notes: string[];
   dataQuality: ExperimentDataQuality;
@@ -59,6 +65,7 @@ export function runExperimentReplay(params: {
   startingCapital: number;
   costDragUsd?: number;
   mechanicalEquity?: number[];
+  candidatePriceSeries?: number[][];
   dataQuality?: ExperimentDataQuality;
   isDemo?: boolean;
   dataSource?: string;
@@ -89,6 +96,7 @@ export function runExperimentReplay(params: {
         solBuyHold: null,
         btcBuyHold: null,
         mechanicalMomentum: null,
+        equalWeightCandidates: null,
       },
       notes,
       dataQuality: "INSUFFICIENT_HISTORY",
@@ -108,9 +116,17 @@ export function runExperimentReplay(params: {
   const mechanical = params.mechanicalEquity
     ? computePerformance(params.mechanicalEquity)
     : null;
+  const ewNorm = params.candidatePriceSeries
+    ? equalWeightSeries(params.candidatePriceSeries)
+    : [];
+  const ew =
+    ewNorm.length >= 2
+      ? computePerformance(ewNorm.map((x) => params.startingCapital * x))
+      : null;
 
   if (!solBh) notes.push("SOL buy-and-hold omitted — no historical SOL series supplied");
   if (!btcBh) notes.push("BTC buy-and-hold omitted — no historical BTC series supplied");
+  if (!ew) notes.push("Equal-weight candidate baseline omitted — no aligned series");
 
   return {
     experiment,
@@ -120,6 +136,7 @@ export function runExperimentReplay(params: {
       solBuyHold: solBh ? computePerformance(solBh) : null,
       btcBuyHold: btcBh ? computePerformance(btcBh) : null,
       mechanicalMomentum: mechanical,
+      equalWeightCandidates: ew,
     },
     notes,
     dataQuality,

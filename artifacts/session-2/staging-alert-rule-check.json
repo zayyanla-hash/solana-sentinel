@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "scope": "operator dashboard created two live journal rules; no mainnet delivery claimed",
+  "rules": [
+    {
+      "trigger": "TRACKED_WALLET_SELL",
+      "isDemo": false,
+      "channel": "INTERNAL"
+    },
+    {
+      "trigger": "TRACKED_WALLET_BUY",
+      "isDemo": false,
+      "channel": "INTERNAL"
+    }
+  ]
+}

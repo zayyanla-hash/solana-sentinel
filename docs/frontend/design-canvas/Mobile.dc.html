@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentinel — Mobile home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;display=swap">
+<style>
+body{margin:0;background:#0E0C09}
+a{color:#CCFF00}a:hover{color:#E2FF66}
+.sx{font-family:'Geist',system-ui,sans-serif;color:#F4F1EA;background:#0E0C09;-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.serif{font-family:'Source Serif 4',Georgia,serif}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.p-ok{background:#00C805;color:#04140A}
+.p-warn{background:#FFB01F;color:#1C1303}
+.p-bad{background:#FF5000;color:#1C0A02}
+.p-neutral{background:#2B261E;color:#E9E4DA}
+.p-line{border:1px solid #3A342A;color:#E9E4DA}
+.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#CCFF00;color:#0E0C09;border:0;border-radius:999px;min-height:48px;padding:0 24px;font:600 15px 'Geist',sans-serif;cursor:pointer;text-decoration:none}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#F4F1EA;border:1px solid #3A342A;border-radius:999px;min-height:44px;padding:0 18px;font:600 14px 'Geist',sans-serif;cursor:pointer;text-decoration:none}
+.txtbtn{background:transparent;border:0;color:#F4F1EA;font:600 14px 'Geist',sans-serif;cursor:pointer;min-height:44px;padding:0 4px}
+.danger{color:#FF7A3D}
+.field{width:100%;box-sizing:border-box;height:48px;border-radius:12px;border:1px solid #3A342A;background:#18150F;color:#F4F1EA;padding:0 16px;font:15px 'Geist',sans-serif}
+.field::placeholder{color:#8F897D}
+.label{display:block;font-size:13px;font-weight:600;color:#D6D0C4;margin-bottom:8px}
+.hint{font-size:12px;color:#A39C8E;margin-top:6px;line-height:1.4}
+.muted{color:#A39C8E}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid #221E17}
+.navlink{color:#C9C3B6;text-decoration:none;font-size:15px;font-weight:500;padding:24px 0;border-bottom:2px solid transparent}
+.navlink:hover{color:#F4F1EA}
+.on{color:#F4F1EA;border-bottom-color:#CCFF00}
+.seg{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;font:600 13px 'Geist',sans-serif;color:#C9C3B6;background:transparent;border:0;cursor:pointer}
+.seg-on{background:#F4F1EA;color:#0E0C09}
+.eyebrow{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#A39C8E}
+.h2{font-size:22px;font-weight:600;letter-spacing:-0.01em;margin:0}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #CCFF00;outline-offset:2px}
+</style>
+</helmet>
+<div class="sx" style="width: 390px; height: 844px; position: relative; overflow: hidden; display: flex; flex-direction: column">
+<header style="display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 8px"><span style="display: flex; align-items: center; gap: 8px"><svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="#F4F1EA" stroke-width="2"></circle><path d="M6 16c3-5.5 6.5-8 10-8s7 2.5 10 8c-3 5.5-6.5 8-10 8s-7-2.5-10-8z" stroke="#F4F1EA" stroke-width="2"></path><circle cx="16" cy="16" r="3.5" fill="#CCFF00"></circle></svg><span class="serif" style="font-size: 20px; font-weight: 600">Sentinel</span></span><button aria-label="Account menu for designer" style="width: 44px; height: 44px; border-radius: 999px; border: 0; background: #2B261E; color: #F4F1EA; font: 600 14px 'Geist', sans-serif">D</button></header>
+<main style="padding: 8px 20px 100px; display: flex; flex-direction: column; gap: 20px; overflow: hidden">
+<section style="display: flex; flex-direction: column; gap: 8px"><h1 style="margin: 0; font-size: 36px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.05">3 of 4 wallets current</h1><span style="color: #FFB01F; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFB01F" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17v.5"></path></svg>Monitoring degraded</span></section>
+<svg viewBox="0 0 350 170" width="100%" style="display: block; height: auto" role="img" aria-label="Sample chart: cumulative observations in the recent window, with classified buys and sells marked"><line x1="8" y1="156" x2="342" y2="156" stroke="#3A342A" stroke-width="1" stroke-dasharray="2 5"></line><path d="M8,156.0 H20.5 V153.6 H21.1 V151.2 H23.6 V148.8 H27.4 V146.4 H27.9 V144.0 H29.0 V141.6 H31.3 V139.2 H32.2 V136.8 H38.3 V134.4 H47.3 V132.0 H47.4 V129.6 H49.3 V127.2 H56.2 V124.8 H58.4 V122.4 H58.8 V120.0 H68.4 V117.6 H76.8 V115.2 H82.6 V112.8 H89.5 V110.4 H104.2 V108.0 H104.7 V105.6 H108.1 V103.2 H111.0 V100.8 H112.9 V98.4 H116.2 V96.0 H130.1 V93.6 H132.4 V91.2 H140.5 V88.8 H147.7 V86.4 H149.8 V84.0 H150.8 V81.6 H152.8 V79.2 H159.4 V76.8 H171.3 V74.4 H177.5 V72.0 H183.4 V69.6 H187.0 V67.2 H190.9 V64.8 H199.4 V62.4 H199.9 V60.0 H200.8 V57.6 H202.3 V55.2 H203.6 V52.8 H217.6 V50.4 H221.4 V48.0 H225.4 V45.6 H231.2 V43.2 H235.3 V40.8 H241.5 V38.4 H251.6 V36.0 H260.9 V33.6 H263.4 V31.2 H273.3 V28.8 H280.6 V26.4 H284.2 V24.0 H294.7 V21.6 H300.3 V19.2 H324.5 V16.8 H334.1 V14.4 H335.4 V12.0 H342" fill="none" stroke="#F4F1EA" stroke-width="2" stroke-linejoin="round"></path><rect x="28.7" y="152.5" width="7" height="7" fill="#FF5000" transform="rotate(45 32.2 156)"></rect><circle cx="47.4" cy="129.6" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><rect x="54.9" y="152.5" width="7" height="7" fill="#FF5000" transform="rotate(45 58.4 156)"></rect><circle cx="68.4" cy="117.6" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="89.5" cy="110.4" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="104.7" cy="105.6" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="108.1" cy="103.2" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="111.0" cy="100.8" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="116.2" cy="96.0" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="130.1" cy="93.6" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="147.7" cy="86.4" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="177.5" cy="72.0" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><rect x="195.9" y="152.5" width="7" height="7" fill="#FF5000" transform="rotate(45 199.4 156)"></rect><circle cx="199.9" cy="60.0" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="200.8" cy="57.6" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="202.3" cy="55.2" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="203.6" cy="52.8" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="225.4" cy="45.6" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="231.2" cy="43.2" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><rect x="257.4" y="152.5" width="7" height="7" fill="#FF5000" transform="rotate(45 260.9 156)"></rect><circle cx="294.7" cy="21.6" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle></svg>
+<div role="group" aria-label="Filter observations" style="display: flex; gap: 2px"><button class="seg seg-on" aria-pressed="true">All</button><button class="seg" aria-pressed="false">Buys</button><button class="seg" aria-pressed="false">Sells</button></div>
+<section><div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #221E17; padding-bottom: 8px"><h2 class="h2" style="font-size: 18px">Watchlist</h2><button class="txtbtn" style="color: #CCFF00">Add</button></div><a href="Wallet.dc.html" class="row" style="text-decoration: none; color: #F4F1EA; padding: 14px 0"><span style="display: flex; flex-direction: column; gap: 2px"><span class="mono" style="font-size: 15px">9WzD…AWWM</span><span class="muted" style="font-size: 12px">12s ago · 50 obs</span></span><span class="pill p-ok">Current</span></a><a href="Wallet.dc.html" class="row" style="text-decoration: none; color: #F4F1EA; padding: 14px 0"><span style="display: flex; flex-direction: column; gap: 2px"><span class="mono" style="font-size: 15px">7xKX…9fQa</span><span class="muted" style="font-size: 12px">31s ago · 50 obs</span></span><span class="pill p-ok">Current</span></a><a href="Wallet.dc.html" class="row" style="text-decoration: none; color: #F4F1EA; padding: 14px 0"><span style="display: flex; flex-direction: column; gap: 2px"><span class="mono" style="font-size: 15px">HN7c…Ywrh</span><span class="muted" style="font-size: 12px">44s ago · 19 obs</span></span><span class="pill p-ok">Current</span></a><a href="Wallet.dc.html" class="row" style="text-decoration: none; color: #F4F1EA; padding: 14px 0"><span style="display: flex; flex-direction: column; gap: 2px"><span class="mono" style="font-size: 15px">4Nd1…mBzK</span><span class="muted" style="font-size: 12px">Backfilling recent window</span></span><span class="pill p-warn">Catching up</span></a></section>
+</main>
+<nav aria-label="Workspace" style="position: absolute; left: 0; right: 0; bottom: 0; height: 84px; border-top: 1px solid #221E17; background: #0E0C09; display: flex; justify-content: space-around; align-items: center; padding-bottom: 12px"><a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #F4F1EA; font-size: 11px; font-weight: 600; min-width: 64px; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CCFF00" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6 8 6v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"></path></svg>Home</a><a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A39C8E; font-size: 11px; font-weight: 600; min-width: 64px; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A39C8E" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="13" rx="2.5"></rect><path d="M16 12.5h2M3.5 9.5h17"></path></svg>Wallets</a><a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A39C8E; font-size: 11px; font-weight: 600; min-width: 64px; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A39C8E" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20.5a2 2 0 0 0 4 0"></path></svg>Alerts</a><a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #A39C8E; font-size: 11px; font-weight: 600; min-width: 64px; min-height: 44px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A39C8E" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"></path></svg>Setup</a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

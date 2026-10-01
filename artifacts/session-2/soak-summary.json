@@ -1,0 +1,83 @@
+{
+  "scope": "Two separate short read-only mainnet runs; one public wallet; not a long-duration availability or classification study",
+  "runs": [
+    {
+      "file": "mainnet-soak.jsonl",
+      "scope": "before-freshness-refinement",
+      "configuredDurationMs": 300000,
+      "processExit": 0,
+      "loggedCycles": 10,
+      "inserted": 37,
+      "duplicates": 0,
+      "degradedCycles": 9,
+      "lastStatus": "healthy",
+      "pollDurationMs": {
+        "min": 438,
+        "median": 576.5,
+        "max": 1176
+      },
+      "rssBytes": {
+        "first": 94617600,
+        "last": 49463296,
+        "max": 94617600
+      },
+      "finalStats": {
+        "wallets": 1,
+        "observations": 42,
+        "trades": 0,
+        "pendingAlerts": 0,
+        "outcomes": {
+          "CLASSIFIED": 0,
+          "UNKNOWN": 41,
+          "FAILED": 1
+        },
+        "coverage": {
+          "BOOTSTRAP_WINDOW": 0,
+          "CATCHING_UP": 0,
+          "CURRENT": 1
+        }
+      },
+      "reasonCounts": {
+        "catch-up-pending": 9
+      }
+    },
+    {
+      "file": "mainnet-recovery-soak.jsonl",
+      "scope": "after-freshness-refinement",
+      "configuredDurationMs": 180000,
+      "processExit": 0,
+      "loggedCycles": 6,
+      "inserted": 11,
+      "duplicates": 0,
+      "degradedCycles": 0,
+      "lastStatus": "healthy",
+      "pollDurationMs": {
+        "min": 243,
+        "median": 295.0,
+        "max": 1381
+      },
+      "rssBytes": {
+        "first": 118915072,
+        "last": 44302336,
+        "max": 118915072
+      },
+      "finalStats": {
+        "wallets": 1,
+        "observations": 53,
+        "trades": 0,
+        "pendingAlerts": 0,
+        "outcomes": {
+          "CLASSIFIED": 0,
+          "UNKNOWN": 52,
+          "FAILED": 1
+        },
+        "coverage": {
+          "BOOTSTRAP_WINDOW": 0,
+          "CATCHING_UP": 0,
+          "CURRENT": 1
+        }
+      },
+      "reasonCounts": {}
+    }
+  ]
+}

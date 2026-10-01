@@ -1,0 +1,82 @@
+
+> solana-sentinel@0.3.0 validate /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm secret-scan
+
+
+> solana-sentinel@0.3.0 typecheck /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> pnpm -r run typecheck
+
+Scope: 30 of 31 workspace projects
+packages/intelligence-events typecheck$ tsc -p tsconfig.json --noEmit
+packages/shared typecheck$ tsc -p tsconfig.json --noEmit
+packages/validation-lab typecheck$ tsc -p tsconfig.json --noEmit
+packages/validation-lab typecheck: Done
+packages/intelligence-events typecheck: Done
+packages/shared typecheck: Done
+packages/alerts typecheck$ tsc -p tsconfig.json --noEmit
+packages/analytics typecheck$ tsc -p tsconfig.json --noEmit
+packages/entitlements typecheck$ tsc -p tsconfig.json --noEmit
+packages/execution typecheck$ tsc -p tsconfig.json --noEmit
+packages/analytics typecheck: Done
+packages/market-data typecheck$ tsc -p tsconfig.json --noEmit
+packages/alerts typecheck: Done
+packages/observability typecheck$ tsc -p tsconfig.json --noEmit
+packages/execution typecheck: Done
+packages/entitlements typecheck: Done
+packages/policy-engine typecheck$ tsc -p tsconfig.json --noEmit
+packages/portfolio typecheck$ tsc -p tsconfig.json --noEmit
+packages/market-data typecheck: Done
+packages/research-agent typecheck$ tsc -p tsconfig.json --noEmit
+packages/observability typecheck: Done
+packages/risk-engine typecheck$ tsc -p tsconfig.json --noEmit
+packages/policy-engine typecheck: Done
+packages/signals typecheck$ tsc -p tsconfig.json --noEmit
+packages/portfolio typecheck: Done
+packages/streaming typecheck$ tsc -p tsconfig.json --noEmit
+packages/research-agent typecheck: Done
+packages/token-risk typecheck$ tsc -p tsconfig.json --noEmit
+packages/risk-engine typecheck: Done
+packages/wallet-intel typecheck$ tsc -p tsconfig.json --noEmit
+packages/streaming typecheck: Done
+packages/wallet-migration typecheck$ tsc -p tsconfig.json --noEmit
+packages/signals typecheck: Done
+packages/x402 typecheck$ tsc -p tsconfig.json --noEmit
+packages/token-risk typecheck: Done
+packages/wallet-intel typecheck: Done
+packages/x402 typecheck: Done
+packages/wallet-migration typecheck: Done
+packages/wallet-graph typecheck$ tsc -p tsconfig.json --noEmit
+packages/solana typecheck$ tsc -p tsconfig.json --noEmit
+packages/discovery typecheck$ tsc -p tsconfig.json --noEmit
+packages/paper-trading typecheck$ tsc -p tsconfig.json --noEmit
+packages/wallet-graph typecheck: Done
+packages/discovery typecheck: Done
+packages/paper-trading typecheck: Done
+packages/solana typecheck: Done
+packages/backtest typecheck$ tsc -p tsconfig.json --noEmit
+packages/experiments typecheck$ tsc -p tsconfig.json --noEmit
+packages/experiments typecheck: Done
+packages/backtest typecheck: Done
+packages/database typecheck$ tsc -p tsconfig.json --noEmit
+packages/database typecheck: Done
+packages/pipeline typecheck$ tsc -p tsconfig.json --noEmit
+packages/pipeline typecheck: ../solana/src/index.ts(3,29): error TS6059: File '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/http.ts' is not under 'rootDir' '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/pipeline/src'. 'rootDir' is expected to contain all source files.
+packages/pipeline typecheck:   The file is in the program because:
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/index.ts'
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/parsed-events.ts'
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/jupiter-token.ts'
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/rpc-reader.ts'
+packages/pipeline typecheck:     Imported via "../../solana/src/http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/pipeline/src/monitor.ts'
+packages/pipeline typecheck: ../solana/src/index.ts(3,29): error TS6307: File '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/http.ts' is not listed within the file list of project '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/pipeline/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+packages/pipeline typecheck:   The file is in the program because:
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/index.ts'
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/parsed-events.ts'
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/jupiter-token.ts'
+packages/pipeline typecheck:     Imported via "./http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/solana/src/rpc-reader.ts'
+packages/pipeline typecheck:     Imported via "../../solana/src/http" from file '/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/pipeline/src/monitor.ts'
+packages/pipeline typecheck: Failed
+/Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening/packages/pipeline:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @sat/pipeline@0.1.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.
+ ELIFECYCLE  Command failed with exit code 2.

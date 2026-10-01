@@ -1,0 +1,116 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Alerts.dc.html": {
+      "expand": "fill",
+      "h": 1040,
+      "title": "Alerts + Telegram deliveries",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1600,
+      "title": "Home",
+      "w": 1440,
+      "x": 0,
+      "y": 0,
+      "is_interactive": true
+    },
+    "Mobile.dc.html": {
+      "h": 844,
+      "title": "Phone \u00b7 Home",
+      "w": 390,
+      "x": 3040,
+      "y": 1720
+    },
+    "Setup.dc.html": {
+      "expand": "fill",
+      "h": 1260,
+      "title": "Setup + team access",
+      "w": 1440,
+      "x": 0,
+      "y": 1720
+    },
+    "SignIn.dc.html": {
+      "expand": "fill",
+      "h": 880,
+      "title": "Sign in (session expired)",
+      "w": 1440,
+      "x": 1520,
+      "y": 1720
+    },
+    "Wallet.dc.html": {
+      "expand": "fill",
+      "h": 1560,
+      "title": "Wallet detail + create alert",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "Foundations.dc.html": {
+      "x": 0,
+      "y": 3100,
+      "w": 1440,
+      "h": 2380,
+      "title": "Foundations",
+      "expand": "fill"
+    },
+    "States.dc.html": {
+      "x": 1520,
+      "y": 3100,
+      "w": 1440,
+      "h": 1080,
+      "title": "States: first run, loading, offline",
+      "expand": "fill"
+    },
+    "Logo.dc.html": {
+      "x": 3040,
+      "y": 3100,
+      "w": 1440,
+      "h": 1500,
+      "title": "Logo: knight / sentinel marks",
+      "expand": "fill"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-01T07:14:22Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "n1": {
+      "fill": "orange",
+      "text": "All numbers, addresses and alerts on these boards are SAMPLE values for layout only. The live app shows only API data; nothing here maps to a new backend field.",
+      "w": 420,
+      "x": 3530,
+      "y": 1720
+    },
+    "t1": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Sentinel \u2014 Robinhood-inspired redesign",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Wallet.dc.html",
+    "Alerts.dc.html",
+    "Setup.dc.html",
+    "SignIn.dc.html",
+    "Mobile.dc.html",
+    "Foundations.dc.html",
+    "States.dc.html",
+    "Logo.dc.html"
+  ],
+  "pages": [],
+  "title": "Sentinel Dashboard Redesign"
+}

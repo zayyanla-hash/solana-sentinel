@@ -1,6 +1,6 @@
 # Token risk
 
-Deterministic assessor (`token-risk-v1.5`) producing:
+Deterministic assessor (`token-risk-v2`) producing:
 
 - `riskScore` 0–100
 - `riskTier`: `LOWER_RISK` | `ELEVATED_RISK` | `HIGH_RISK` | `INSUFFICIENT_DATA`

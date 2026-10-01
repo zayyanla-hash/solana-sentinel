@@ -84,6 +84,7 @@ export interface HistoricalBars {
   "15m"?: OhlcvBar[];
   "1h"?: OhlcvBar[];
   "4h"?: OhlcvBar[];
+  "1d"?: OhlcvBar[];
   sol?: Partial<Record<OhlcvInterval, OhlcvBar[]>>;
   btc?: Partial<Record<OhlcvInterval, OhlcvBar[]>>;
   asOfMs?: number;
@@ -110,6 +111,7 @@ export const INTERVAL_MS: Record<OhlcvInterval, number> = {
   "15m": 900_000,
   "1h": 3_600_000,
   "4h": 14_400_000,
+  "1d": 86_400_000,
 };
 
 /** Drop in-progress bars so signals only see closed candles. */
@@ -128,7 +130,7 @@ export function closedBars(
 /** Prefer requested interval; if missing, use the next coarser available interval (never interpolate). Closed bars only. */
 export function barsForInterval(hist: HistoricalBars, interval: OhlcvInterval): OhlcvBar[] {
   const asOfMs = hist.asOfMs;
-  const order: OhlcvInterval[] = ["1m", "5m", "15m", "1h", "4h"];
+  const order: OhlcvInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
   const start = order.indexOf(interval);
   const candidates = start >= 0 ? order.slice(start) : order;
   for (const i of candidates) {

@@ -1,0 +1,42 @@
+
+> solana-sentinel@0.3.0 test /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+> vitest run -- --reporter=json --outputFile=/tmp/sentinel-final-tests.json
+
+
+ RUN  v3.2.7 /Users/farhanfaisal/Documents/Codex/2026-09-30/solana-sentinel-hardening
+
+ ✓ tests/redteam-fixes.test.ts (10 tests) 47ms
+ ✓ tests/pipeline.test.ts (6 tests) 103ms
+ ✓ tests/v2-public-demo.test.ts (8 tests) 14ms
+ ✓ tests/durable-history.test.ts (16 tests) 399ms
+ ✓ tests/history-http.test.ts (17 tests) 181ms
+ ✓ tests/provider-evidence.test.ts (7 tests) 503ms
+   ✓ provider readiness and token metadata are grounded in actual evidence > malformed response does not expose credential-bearing network errors  491ms
+ ✓ tests/provider-fail-closed.test.ts (3 tests) 636ms
+   ✓ configured real providers fail closed for known demo mints > Helius failure yields unknown authority risk, not a clean demo profile  621ms
+ ✓ tests/integration.test.ts (19 tests) 643ms
+   ✓ on-chain adapters > helius failure on unknown mint returns insufficient-data inputs, not synthetic clean flags  627ms
+ ✓ tests/persistence.test.ts (8 tests | 2 skipped) 28ms
+ ✓ tests/p0-invariants.test.ts (7 tests) 31ms
+ ✓ tests/history-process.test.ts (2 tests) 829ms
+   ✓ actual child-process history restart boundaries > SIGKILL before rename preserves the prior file and fails closed on orphaned writer ownership  562ms
+ ✓ tests/validation-lab.test.ts (28 tests) 29ms
+ ✓ tests/wallet-migration.test.ts (20 tests) 18ms
+ ✓ tests/wallet-pipeline.test.ts (24 tests) 22ms
+ ✓ tests/intelligence-events.test.ts (5 tests) 16ms
+ ✓ tests/sentinel-v3.test.ts (26 tests) 19ms
+ ✓ tests/concurrent-portfolio.test.ts (7 tests) 10ms
+ ✓ tests/normalization-reliability.test.ts (23 tests) 8ms
+ ✓ tests/policy-engine.test.ts (4 tests) 3ms
+ ✓ tests/token-risk.test.ts (11 tests) 3ms
+ ✓ tests/helius-swap.test.ts (5 tests) 7ms
+ ✓ tests/migration-intelligence.test.ts (1 test) 7ms
+ ✓ tests/stream-health.test.ts (2 tests) 11ms
+ ✓ tests/risk-engine.test.ts (4 tests) 3ms
+ ✓ tests/historical-signals.test.ts (10 tests) 6ms
+
+ Test Files  25 passed (25)
+      Tests  271 passed | 2 skipped (273)
+   Start at  20:28:41
+   Duration  1.89s (transform 761ms, setup 0ms, collect 3.45s, tests 3.58s, environment 2ms, prepare 1.36s)
+

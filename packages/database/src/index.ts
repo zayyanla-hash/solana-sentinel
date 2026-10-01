@@ -10,21 +10,39 @@ import {
   type OpportunityScore,
   type ResearchBrief,
   type SignalResult,
+  type WalletCredibilityScore,
+  type SentinelSignal,
+  type AlertRule,
+  type AlertEvent,
+  AlertEventSchema,
+  type BacktestResult,
+  type WatchlistItem,
 } from "@sat/shared";
 import type { ExperimentResult } from "@sat/experiments";
 import { createInitialPortfolio } from "@sat/portfolio";
-import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork } from "./types";
-import { AlreadyExecutedError } from "./types";
+import { isDeepStrictEqual } from "node:util";
+import type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork, MarkUnitOfWork, AlertCooldown } from "./types";
+import { AlreadyExecutedError, StalePortfolioError, validateAlertCooldown } from "./types";
 import { PostgresDatabase } from "./postgres";
 
-export type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork };
+export type { Database, StoreSnapshot, StoredSignal, FillUnitOfWork, MarkUnitOfWork, AlertCooldown };
+
+const MAX_ALERT_EVENT_FACTS = 100_000;
 
 export class InMemoryDatabase implements Database {
   readonly mode = "memory" as const;
   private state: StoreSnapshot;
   private tail: Promise<void> = Promise.resolve();
+  private readonly alertFacts = new Map<string, AlertEvent>();
+  private readonly alertCooldowns = new Map<string, number>();
 
-  constructor(startingCapital = Number(process.env.PAPER_STARTING_CAPITAL_USD ?? 100_000)) {
+  constructor(
+    startingCapital = Number(process.env.PAPER_STARTING_CAPITAL_USD ?? 100_000),
+    private readonly alertFactCapacity = MAX_ALERT_EVENT_FACTS,
+  ) {
+    if (!Number.isSafeInteger(alertFactCapacity) || alertFactCapacity < 1 || alertFactCapacity > MAX_ALERT_EVENT_FACTS) {
+      throw new Error("ALERT_EVENT_CAPACITY_INVALID");
+    }
     this.state = emptyState(startingCapital, "memory");
   }
 
@@ -100,6 +118,16 @@ export class InMemoryDatabase implements Database {
         if (!current || current.status !== "PROPOSED") {
           throw new AlreadyExecutedError();
         }
+      }
+      const sorted = (positions: Position[]) => [...positions].sort((a, b) => a.id.localeCompare(b.id));
+      if (
+        !work.expectedPortfolio || !work.expectedPositions ||
+        !isDeepStrictEqual(this.state.portfolio, work.expectedPortfolio) ||
+        !isDeepStrictEqual(sorted(this.state.positions), sorted(work.expectedPositions))
+      ) {
+        throw new StalePortfolioError();
+      }
+      if (work.consumeProposal) {
         this.state.proposals = [
           work.proposal,
           ...this.state.proposals.filter((x) => x.id !== work.proposalId),
@@ -112,8 +140,119 @@ export class InMemoryDatabase implements Database {
       this.state.equityHistory.push({ t: new Date().toISOString(), nav: work.navUsd });
     });
   }
+  async recordMarkToMarket(work: MarkUnitOfWork): Promise<void> {
+    return this.enqueue(() => {
+      const sorted = (positions: Position[]) => [...positions].sort((a, b) => a.id.localeCompare(b.id));
+      if (
+        !isDeepStrictEqual(this.state.portfolio, work.expectedPortfolio) ||
+        !isDeepStrictEqual(sorted(this.state.positions), sorted(work.expectedPositions))
+      ) {
+        throw new StalePortfolioError();
+      }
+      this.state.positions = work.positions;
+      this.state.portfolio = work.snapshot;
+      this.state.equityHistory.push({ t: work.snapshot.timestamp, nav: work.navUsd });
+    });
+  }
   async reset(startingCapital: number) {
-    this.state = emptyState(startingCapital, "memory");
+    await this.enqueue(() => {
+      this.state = emptyState(startingCapital, "memory");
+      this.alertFacts.clear();
+      this.alertCooldowns.clear();
+    });
+  }
+  async setWatchlist(items: WatchlistItem[]) {
+    await this.enqueue(() => { this.state.watchlist = structuredClone(items); });
+  }
+  async addWatchlistItem(item: WatchlistItem, maxItems: number): Promise<WatchlistItem> {
+    return this.enqueue(() => {
+      const existing = this.state.watchlist.find((w) => w.kind === item.kind && w.address === item.address);
+      if (existing) return structuredClone(existing);
+      if (this.state.watchlist.length >= maxItems) throw new Error("WATCHLIST_LIMIT");
+      this.state.watchlist.unshift(structuredClone(item));
+      return structuredClone(item);
+    });
+  }
+  async removeWatchlistItem(id: string): Promise<void> {
+    await this.enqueue(() => { this.state.watchlist = this.state.watchlist.filter((w) => w.id !== id); });
+  }
+  async setWalletScores(scores: WalletCredibilityScore[]) {
+    await this.enqueue(() => { this.state.walletScores = structuredClone(scores.slice(0, 200)); });
+  }
+  async upsertWalletScore(score: WalletCredibilityScore): Promise<void> {
+    await this.enqueue(() => {
+      this.state.walletScores = [structuredClone(score), ...this.state.walletScores.filter((s) => s.address !== score.address)].slice(0, 200);
+    });
+  }
+  async setSentinelSignals(signals: SentinelSignal[]) {
+    await this.enqueue(() => { this.state.sentinelSignals = structuredClone(signals.slice(0, 200)); });
+  }
+  async addAlertRule(rule: AlertRule) {
+    await this.enqueue(() => {
+      if (this.state.alertRules.length >= 100 && !this.state.alertRules.some((r) => r.id === rule.id)) throw new Error("ALERT_RULE_LIMIT");
+      this.state.alertRules = [structuredClone(rule), ...this.state.alertRules.filter((r) => r.id !== rule.id)].slice(0, 100);
+    });
+  }
+  async updateAlertRule(id: string, patch: Partial<Pick<AlertRule, "name" | "enabled" | "wallet" | "mint" | "cooldownMinutes">>): Promise<void> {
+    await this.enqueue(() => {
+      if (!this.state.alertRules.some((r) => r.id === id)) throw new Error("RULE_NOT_FOUND");
+      this.state.alertRules = this.state.alertRules.map((r) => r.id === id ? { ...r, ...patch } : r);
+    });
+  }
+  async deleteAlertRule(id: string): Promise<void> {
+    await this.enqueue(() => { this.state.alertRules = this.state.alertRules.filter((r) => r.id !== id); });
+  }
+  async addAlertEvents(events: AlertEvent[]): Promise<void> {
+    await this.enqueue(() => {
+      const ids = new Set(events.map((event) => event.id));
+      const seen = new Set<string>();
+      const unique = events.filter((event) => {
+        if (seen.has(event.id)) return false;
+        seen.add(event.id);
+        return true;
+      });
+      this.state.alertEvents = [
+        ...structuredClone(unique),
+        ...this.state.alertEvents.filter((event) => !ids.has(event.id)),
+      ].slice(0, 500);
+    });
+  }
+  async recordAlertEvent(event: AlertEvent, cooldown?: AlertCooldown): Promise<AlertEvent> {
+    return this.enqueue(() => {
+      const existing = this.alertFacts.get(event.id);
+      if (existing) return structuredClone(existing);
+      if (this.alertFacts.size >= this.alertFactCapacity) throw new Error("ALERT_EVENT_CAPACITY");
+      const inHistory = this.state.alertEvents.find((saved) => saved.id === event.id);
+      if (inHistory) {
+        this.alertFacts.set(inHistory.id, structuredClone(inHistory));
+        return structuredClone(inHistory);
+      }
+      const parsed = AlertEventSchema.parse(event);
+      const gate = validateAlertCooldown(parsed, cooldown);
+      let recorded = parsed;
+      if (gate) {
+        const now = Date.now();
+        for (const [key, expiry] of this.alertCooldowns) {
+          if (expiry <= now) this.alertCooldowns.delete(key);
+        }
+        if ((this.alertCooldowns.get(gate.key) ?? 0) > now) {
+          recorded = { ...parsed, delivered: false, suppressedReason: "cooldown" };
+        } else if (this.alertCooldowns.size >= 10_000) {
+          recorded = { ...parsed, delivered: false, suppressedReason: "cooldown-capacity" };
+        } else {
+          this.alertCooldowns.set(gate.key, Date.parse(gate.expiresAt));
+        }
+      }
+      const stored = structuredClone(recorded);
+      this.alertFacts.set(stored.id, stored);
+      this.state.alertEvents = [stored, ...this.state.alertEvents.filter((saved) => saved.id !== stored.id)].slice(0, 500);
+      return structuredClone(stored);
+    });
+  }
+  async addBacktest(result: BacktestResult) {
+    await this.enqueue(() => {
+      this.state.backtests = [structuredClone(result), ...this.state.backtests.filter((r) => r.id !== result.id)].slice(0, 50);
+    });
   }
 }
 
@@ -135,6 +274,12 @@ function emptyState(startingCapital: number, mode: StoreSnapshot["mode"]): Store
     signals: [],
     equityHistory: [{ t: snapshot.timestamp, nav: snapshot.navUsd }],
     parseErrors: 0,
+    watchlist: [],
+    walletScores: [],
+    sentinelSignals: [],
+    alertRules: [],
+    alertEvents: [],
+    backtests: [],
   };
 }
 
@@ -168,5 +313,15 @@ export async function closeDatabaseForTests(): Promise<void> {
   singleton = null;
 }
 
-export { PostgresDatabase, AlreadyExecutedError };
+export const closeDatabase = closeDatabaseForTests;
+
+export { PostgresDatabase, buildPoolConfig } from "./postgres";
+export { AlreadyExecutedError, StalePortfolioError };
 export { STORE_SCHEMA_SQL, STORE_SCHEMA_VERSION } from "./schema-sql";
+export { PostgresIngestionStore, IngestionStoreError, INGESTION_SCHEMA_SQL } from "./ingestion";
+export type { IngestionCheckpoint, ChainObservation, IngestionStats, PendingTradeAlert } from "./ingestion";
+export { PostgresDeliveryStore, DELIVERY_SCHEMA_SQL } from "./delivery";
+export type { TelegramDelivery, TelegramDestination, ClaimedTelegramDelivery, TelegramSendResult as DeliverySendResult } from "./delivery";
+
+export { PostgresTeamStore, getTeamStore, TEAM_SCHEMA_SQL } from "./team";
+export type { TeamMember } from "./team";

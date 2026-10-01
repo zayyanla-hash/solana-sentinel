@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-01T05:38:49.635552+00:00",
+  "labelStatus": "SOURCE_FIELD_REVIEW",
+  "scope": "Public Jupiter program recent signatures, fee-payer view; failed transaction outcome only",
+  "sourceArtifact": "mainnet-unreviewed-holdout.json",
+  "requested": 20,
+  "acquired": 12,
+  "acquisitionFailures": 8,
+  "labels": [
+    {
+      "signature": "5KyhQGgdEa4EMSfeQSRkuAYH9xRhgoyY4jydhRcBGbmdAz73upio3vWu8Rv4U5ZQHDUyKsoKu7ktRLYPrwsaE3LV",
+      "wallet": "GJvewfRjqTUPtx6WsBSUnaFbdgXwgXnWfpDyLm65T4YA",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 0,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "3TZL33zcaj7NCxgPjfzhQocWwVzoaBz5y4E3UrikAafnocXMmyf2U69VqmU9PRnKfjAgdzyZBuVgi9WRthcvSMGy",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 1,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "2aU2wozNPNCocf5ur3PZJqBGRRhTTToBhzBAKJFwDcqPRJSCMxTkjLw59vQw9Lx9LfqZQfr9MyGY3b8URkdn3oYq",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 2,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "5m4G2NXBiAQ2DZMDM8Hh5AgiKATX4eGTrqktyNjdHQscxRquvFiFBrwHwWLDiM1wfrowCUbYCepjy7NryzGtuZjU",
+      "wallet": "GWixHGJXDB5a16LofoUJM6T13AXFPD1FH9AqTAiVdhLH",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 3,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "5YtKU3dcS8PdA3du6o6tJ1c1tRSAd43ZYjaht9FC1AowbdrDwLXJZRR7sRYQMCbP8Z7mAXJJQcL1XSdo9zHzBUSk",
+      "wallet": "GWixHGJXDB5a16LofoUJM6T13AXFPD1FH9AqTAiVdhLH",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 4,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "3jRNHzgujHeDjiesNxNAieg6YDAZh6QHFPciqzPm37TXpoNCTeVgLgm7bEQReXkPYAe9JGDHY9LBDJREb2ufUpTw",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 5,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "2uEv5zdWFW95i62Ghq5zuGnziZdxiBog593PpkbCJmmegAtidvyK6zcgr4Ax9uABDh7qdc6DGZovwqJby8ezmghi",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 6,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "tVXm64AN4VyivhmSM71abjdALjydikESPxkTfLtb2h3GET7LwDwR25uT1Y1QxUi3bd5i7sxAfM4mLaMiJrsXxEo",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 7,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "31tR76EawjtGe4BagQ9uyA7Zjus3fAqCHFwgg1AWU4xNVCL1RNywDhA5tJSuhfGpiRjUSd4SQn9AA5iUwRnJ3ifo",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 8,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "3tzMgv6cRvDGbffGFGwYWKGGyAAWiSy1ursPQAfs2UvbSkAqaY5yAiji39ucjsqzfBYoUVfTNcFCVEtuDFeWJWuR",
+      "wallet": "ENY9JreWWWtq8jSKfLtXpzjBteknLPdahPCwG7ZCVbJe",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 9,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "5dcPR5mkgm8xB9YuAHnjJsHioiBX5p4WMiQbSTi8QbyfwCUj3TaDRHD7EG14VLKRcNA18FZNqC8pooHB42LfZEn9",
+      "wallet": "5CKAa7WmJwK2UjgVZXiZHwDD6rJ1nuHMm7Ki2PsrKYPQ",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 10,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    },
+    {
+      "signature": "2g1tr7PWVy5egvbQbjdTPBH5zyMLHJuFkY5RtKWVPWP4KX6WySBMrgwswtUaniaKiw4EBZwV3eYBGCfP49vB5Cov",
+      "wallet": "5CKAa7WmJwK2UjgVZXiZHwDD6rJ1nuHMm7Ki2PsrKYPQ",
+      "expectedOutcome": "FAILED",
+      "evidencePath": "raw.meta.err",
+      "sourceIndex": 11,
+      "sourceArtifact": "mainnet-unreviewed-holdout.json",
+      "predictionOutcome": "FAILED"
+    }
+  ],
+  "unverifiedRows": [],
+  "failedOutcomeAgreement": 12,
+  "accuracy": null,
+  "caveat": "The sample contains no reviewed BUY or SELL. Failed outcomes alone do not establish trade classification coverage."
+}

@@ -1,0 +1,13 @@
+{
+  "scope": "five-minute read-only public-RPC staging pilot, one public sample wallet; not production or long-term reliability evidence",
+  "requestedDurationSeconds": 300,
+  "cycles": 10,
+  "healthyCycles": 10,
+  "failedPolls": 0,
+  "inserted": 1,
+  "classifiedTrades": 0,
+  "alertEvents": 0,
+  "maxRssBytes": 105955328,
+  "startedAt": "2026-10-01T05:52:34.358Z",
+  "lastCycleAt": "2026-10-01T05:57:07.798Z"
+}

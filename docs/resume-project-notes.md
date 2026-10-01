@@ -2,7 +2,7 @@
 
 ## Claims you can make
 
-- Built a monorepo Solana **research** platform with discovery → historical/snapshot signals → token-risk → policy → portfolio risk → Jupiter quote planning → paper execution → experiments
+- Built Solana Sentinel, a monorepo Solana **research** platform with discovery → historical/snapshot signals → token-risk → policy → portfolio risk → Jupiter quote planning → paper execution → experiments
 - Emphasized safety gates, provenance, and explainability
 - Implemented provider pattern with DEMO fallbacks
 - Added Postgres persistence when `DATABASE_URL` is set, with labeled in-memory fallback

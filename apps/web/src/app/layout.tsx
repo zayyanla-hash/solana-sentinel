@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
@@ -20,11 +20,17 @@ const serif = Source_Serif_4({
   variable: "--font-serif",
 });
 
-export const metadata: Metadata = {
-  title: "SAT Research — Solana Agentic Trading Research",
+export async function generateMetadata(): Promise<Metadata> { return process.env.SENTINEL_TEAM_MODE === "true" ? {
+  title: "Solana Sentinel — Shared Wallet Monitor",
+  description: "Private shared wallet monitoring and alerts. Read-only chain access; no signing or trading.",
+  icons: { icon: [{ url: "/sentinel-icon.svg", type: "image/svg+xml" }], apple: "/sentinel-icon.svg" },
+} : {
+  title: "Solana Sentinel — Solana Agentic Trading Research Platform",
   description:
-    "Paper-only Solana agentic trading research terminal. Discovery, signals, token-risk, policy, and simulated execution.",
-};
+    "Paper-only Solana research and paper-trading terminal. Deterministic risk, historical signals, provenance, no live broadcast.",
+}; }
+
+export const viewport: Viewport = { themeColor: "#0c1117", colorScheme: "dark" };
 
 export default function RootLayout({
   children,

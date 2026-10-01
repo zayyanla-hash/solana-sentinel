@@ -1,5 +1,3 @@
-import { useId } from "react";
-
 const PATHS = {
   search: <><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
@@ -31,14 +29,19 @@ export function Icon({ name, size = 18, color = "currentColor", strokeWidth = 1.
   );
 }
 
-/** Eye mark: a watcher with a single neon pupil. */
-export function Mark({ size = 28 }: { size?: number }) {
-  const id = useId();
+const HELM_VENTS: [number, number][] = [[38, 38], [42, 38], [38, 43], [42, 43], [38, 48]];
+
+/**
+ * Great-helm mark: a knight's closed helm seen head-on, the neon visor slit is the one "watching" detail.
+ * `ground` is the colour behind the mark; the centre ridge and vents are cut out in it.
+ */
+export function Mark({ size = 28, ground = "#0E0C09", title }: { size?: number; ground?: string; title?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false" data-mark={id} style={{ flexShrink: 0 }}>
-      <circle cx="16" cy="16" r="14" stroke="#F4F1EA" strokeWidth="2" />
-      <path d="M6 16c3-5.5 6.5-8 10-8s7 2.5 10 8c-3 5.5-6.5 8-10 8s-7-2.5-10-8z" stroke="#F4F1EA" strokeWidth="2" />
-      <circle cx="16" cy="16" r="3.5" fill="#CCFF00" />
+    <svg width={size} height={size} viewBox="0 0 64 64" role={title ? "img" : undefined} aria-label={title} aria-hidden={title ? undefined : true} focusable="false" style={{ flexShrink: 0 }}>
+      <path d="M14 18C14 9 22 5 32 5s18 4 18 13v24c0 9-8 14-18 17-10-3-18-8-18-17Z" fill="#F4F1EA" />
+      <rect x="18" y="25" width="28" height="5" rx="2.5" fill="#CCFF00" />
+      <rect x="30.5" y="30" width="3" height="22" rx="1.5" fill={ground} />
+      {HELM_VENTS.map(([cx, cy]) => <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.6" fill={ground} />)}
     </svg>
   );
 }

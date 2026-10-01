@@ -12,7 +12,7 @@ export const NAV: { view: View; label: string; icon: IconName }[] = [
   { view: "setup", label: "Setup", icon: "gear" },
 ];
 
-export function Brand({ onClick, size = 28 }: { onClick?: () => void; size?: number }) {
+export function Brand({ onClick, size = 32 }: { onClick?: () => void; size?: number }) {
   const inner = (
     <>
       <Mark size={size} />

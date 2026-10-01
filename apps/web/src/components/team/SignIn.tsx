@@ -21,7 +21,7 @@ export function SignIn({ reason, pending, onSignIn }: { reason: SignOutReason; p
   return (
     <div className="mx-auto w-full max-w-[1280px]">
       <div className="flex items-center gap-2.5 px-5 py-6 sm:px-8">
-        <Mark />
+        <Mark size={32} />
         <span className={cx(s.serif, "text-2xl font-semibold tracking-[-0.01em]")}>Sentinel</span>
       </div>
       <div className="grid items-center gap-10 px-5 pt-6 pb-20 sm:px-8 lg:grid-cols-[minmax(0,1fr)_440px] lg:gap-24 lg:pt-16 lg:pb-24">

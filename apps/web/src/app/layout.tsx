@@ -23,6 +23,7 @@ const serif = Source_Serif_4({
 export async function generateMetadata(): Promise<Metadata> { return process.env.SENTINEL_TEAM_MODE === "true" ? {
   title: "Solana Sentinel — Shared Wallet Monitor",
   description: "Private shared wallet monitoring and alerts. Read-only chain access; no signing or trading.",
+  icons: { icon: [{ url: "/sentinel-icon.svg", type: "image/svg+xml" }], apple: "/sentinel-icon.svg" },
 } : {
   title: "Solana Sentinel — Solana Agentic Trading Research Platform",
   description:

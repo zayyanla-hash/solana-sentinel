@@ -3,6 +3,7 @@
  * Fail-closed: missing key or malformed payload → null, never a fake "verified".
  * Docs: https://dev.jup.ag (Tokens API). Organic score is advisory, not a safety rating.
  */
+import { requestJson } from "./http";
 
 export interface JupiterTokenIntel {
   verified: boolean | null;
@@ -28,15 +29,13 @@ export async function fetchJupiterTokenIntel(mint: string): Promise<JupiterToken
   const headers: Record<string, string> = { Accept: "application/json" };
   if (key) headers["x-api-key"] = key;
   try {
-    const res = await fetch(url, { headers });
-    if (!res.ok) return { ...EMPTY_JUPITER_INTEL, source: `jupiter-tokens HTTP ${res.status}` };
-    const json = (await res.json()) as unknown;
-    const rows = Array.isArray(json) ? json : (json as { data?: unknown[] }).data;
+    const { value: json } = await requestJson(url, { headers });
+    const rows = Array.isArray(json) ? json : json && typeof json === "object" ? (json as { data?: unknown[] }).data : null;
     if (!Array.isArray(rows) || !rows.length) {
       return { ...EMPTY_JUPITER_INTEL, source: "jupiter-tokens empty" };
     }
     const hit =
-      rows.find((r) => r && typeof r === "object" && (r as { id?: string }).id === mint) ?? rows[0];
+      rows.find((r) => r && typeof r === "object" && (r as { id?: string }).id === mint);
     if (!hit || typeof hit !== "object") return { ...EMPTY_JUPITER_INTEL, source: "jupiter-tokens unparsed" };
     const rec = hit as {
       organicScore?: unknown;
@@ -49,18 +48,18 @@ export async function fetchJupiterTokenIntel(mint: string): Promise<JupiterToken
     if (typeof rec.isVerified === "boolean") verified = rec.isVerified;
     else if (typeof rec.verified === "boolean") verified = rec.verified;
     else if (tags.includes("verified")) verified = true;
-    const organicRaw = Number(rec.organicScore);
-    const organicScore = Number.isFinite(organicRaw) ? Math.max(0, Math.min(100, organicRaw)) : null;
+    const organicRaw = typeof rec.organicScore === "number" ? rec.organicScore : NaN;
+    const organicScore = Number.isFinite(organicRaw) && organicRaw >= 0 && organicRaw <= 100 ? organicRaw : null;
     return {
       verified,
       organicScore,
       source: "jupiter-tokens-v2",
       isDemo: false,
     };
-  } catch (err) {
+  } catch {
     return {
       ...EMPTY_JUPITER_INTEL,
-      source: `jupiter-tokens error: ${err instanceof Error ? err.message : String(err)}`,
+      source: "jupiter-tokens request-failed",
     };
   }
 }

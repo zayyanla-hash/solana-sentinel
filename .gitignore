@@ -21,5 +21,6 @@ test-results/
 *.tsbuildinfo
 .pnpm-store/
 agent-tools/
+runtime-history/
 apps/web/AGENTS.md
 apps/web/CLAUDE.md

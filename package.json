@@ -8,6 +8,8 @@
     "node": ">=20"
   },
   "scripts": {
+    "validate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm secret-scan",
+    "benchmark:ingestion": "tsx scripts/benchmark-ingestion.ts",
     "build": "pnpm -r --filter=./packages/* run build && pnpm --filter=@sat/web run build && pnpm --filter=@sat/worker run build",
     "dev": "pnpm --filter=@sat/web run dev",
     "dev:worker": "pnpm --filter=@sat/worker run dev",

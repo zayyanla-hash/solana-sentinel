@@ -10,8 +10,9 @@ import {
   addWatchlistItem,
   verifyLiveWallet,
   compareWalletProviders,
+  closeProviders,
 } from "@sat/pipeline";
-import { getDatabase } from "@sat/database";
+import { getDatabase, closeDatabase } from "@sat/database";
 import { isLiveTradingAllowed } from "@sat/shared";
 
 function json(data: unknown): void {
@@ -93,7 +94,18 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
+async function cleanup() {
+  await closeProviders();
+  await closeDatabase();
+}
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    process.exitCode = signal === "SIGINT" ? 130 : 143;
+    void closeProviders().catch(() => { process.exitCode = 1; });
+  });
+}
+
+main().finally(cleanup).catch((err) => {
   json({ error: err instanceof Error ? err.message : String(err) });
   process.exitCode = 1;
 });

@@ -29,7 +29,7 @@ import { PaperTradingEngine, applyFillToPortfolio } from "@sat/paper-trading";
 import { runExperimentReplay } from "@sat/experiments";
 import { getProviders } from "./providers";
 import { generateSmartMoneySignals } from "./intelligence";
-import { overallStatus, setProviderHealth } from "@sat/observability";
+import { overallStatus, setProviderHealth, getProviderHealth } from "@sat/observability";
 import {
   decideProposalStatus,
   assertStoredGates,
@@ -37,7 +37,7 @@ import {
   assertFreshRisk,
 } from "./gates";
 
-export { getProviders, resetProvidersForTests } from "./providers";
+export { getProviders, resetProvidersForTests, closeProviders } from "./providers";
 export {
   listWalletIntelligence,
   analyzeWallet,
@@ -504,8 +504,14 @@ export async function getSystemHealth(db: Database = getDatabase()) {
       dataAgeMs: null,
     },
   ];
-  for (const p of providerRows) setProviderHealth(p);
-  const status = overallStatus(providerRows);
+  const observedRows = providerRows.map((p) => {
+    if (p.isDemo) return p;
+    const observed = getProviderHealth(p.name);
+    if (observed) return observed;
+    return { ...p, status: "degraded" as const, lastSuccessAt: null, lastError: "No successful request observed" };
+  });
+  for (const p of observedRows) setProviderHealth(p);
+  const status = overallStatus(observedRows);
   return {
     operatingMode: getOperatingMode(),
     liveTradingAllowed: isLiveTradingAllowed(),
@@ -543,6 +549,6 @@ export async function getSystemHealth(db: Database = getDatabase()) {
       walletHistory: walletHistory.name,
       walletHistoryIsDemo: walletHistory.isDemo,
     },
-    providerHealth: providerRows,
+    providerHealth: observedRows,
   };
 }

@@ -122,6 +122,7 @@ export class OpenAIResearchProvider implements ResearchProvider {
     try {
       const res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
+        signal: AbortSignal.timeout(8_000),
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",

@@ -17,8 +17,11 @@ export interface AppProviders {
 }
 
 let cached: AppProviders | null = null;
+let closing = false;
+let closeTask: Promise<void> | null = null;
 
 export function getProviders(): AppProviders {
+  if (closing) throw new Error("providers-shutting-down");
   if (!cached) {
     cached = {
       market: createMarketDataProvider(),
@@ -33,4 +36,15 @@ export function getProviders(): AppProviders {
 
 export function resetProvidersForTests(): void {
   cached = null;
+  closing = false;
+  closeTask = null;
+}
+
+export async function closeProviders(): Promise<void> {
+  if (closeTask) return closeTask;
+  closing = true;
+  const providers = cached;
+  cached = null;
+  closeTask = providers?.walletHistory.close?.() ?? Promise.resolve();
+  await closeTask;
 }

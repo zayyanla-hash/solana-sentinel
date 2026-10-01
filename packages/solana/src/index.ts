@@ -1,5 +1,7 @@
 import type { OnChainRiskInput } from "@sat/token-risk";
 import { getDemoCandidates } from "@sat/shared";
+import { requestJson } from "./http";
+import { setProviderHealth } from "@sat/observability";
 
 export interface OnChainProvider {
   readonly name: string;
@@ -208,7 +210,6 @@ export class HeliusOnChainProvider implements OnChainProvider {
   constructor(
     private readonly apiKey: string,
     private readonly rpcUrl?: string,
-    private readonly fallback = new DemoOnChainProvider(),
   ) {}
 
   private endpoint(): string {
@@ -305,8 +306,6 @@ export class HeliusOnChainProvider implements OnChainProvider {
         metadataQuality,
       };
     } catch {
-      const knownDemo = getDemoCandidates().some((c) => c.mint === mint);
-      if (knownDemo) return this.fallback.getTokenRiskInputs(mint);
       return { ...UNKNOWN_ONCHAIN_RISK };
     }
   }
@@ -319,18 +318,24 @@ export class HeliusOnChainProvider implements OnChainProvider {
       method === "getAsset"
         ? { jsonrpc: "2.0", id: `sat-${method}`, method, params }
         : { jsonrpc: "2.0", id: `sat-${method}`, method, params };
-    const res = await fetch(this.endpoint(), {
+    const started = Date.now();
+    try {
+    const response = await requestJson(this.endpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Helius HTTP ${res.status}`);
-    const json = (await res.json()) as {
+    const json = response.value as {
       result?: Record<string, unknown>;
       error?: { message?: string };
     };
-    if (json.error) throw new Error(json.error.message ?? method);
+    if (!json || typeof json !== "object" || Array.isArray(json) || json.error || !json.result || typeof json.result !== "object") throw new Error("helius-rpc-invalid-response");
+    setProviderHealth({ name: this.name, status: "healthy", isDemo: false, lastSuccessAt: new Date().toISOString(), lastError: null, latencyMs: Date.now() - started, dataAgeMs: null });
     return json;
+    } catch {
+      setProviderHealth({ name: this.name, status: "degraded", isDemo: false, lastSuccessAt: null, lastError: "helius-rpc-request-failed", latencyMs: Date.now() - started, dataAgeMs: null });
+      throw new Error("helius-rpc-request-failed");
+    }
   }
 }
 
@@ -366,6 +371,7 @@ export {
 } from "./jupiter-token";
 export { parseHeliusEnhancedTx, isQuoteMint, USDT } from "./helius-swap";
 export { tradesAsOf } from "./replay";
+export { DurableWalletHistoryProvider, HistoryStoreError, type DurableHistoryOptions } from "./durable-history";
 export {
   normalizeParsedEventsItem,
   normalizeEnhancedTx,

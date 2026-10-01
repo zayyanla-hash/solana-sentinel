@@ -275,9 +275,7 @@ describe("on-chain adapters", () => {
   it("helius reads mint/freeze authority from token_info", async () => {
     const original = globalThis.fetch;
     globalThis.fetch = (async () =>
-      ({
-        ok: true,
-        json: async () => ({
+      new Response(JSON.stringify({
           result: {
             token_info: {
               token_program: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -287,8 +285,7 @@ describe("on-chain adapters", () => {
             authorities: [],
             content: { metadata: { name: "USD Coin", symbol: "USDC" } },
           },
-        }),
-      }) as Response) as typeof fetch;
+        }), { headers: { "content-type": "application/json" } })) as typeof fetch;
     try {
       const helius = new HeliusOnChainProvider("test-key", "http://helius.test");
       const r = await helius.getTokenRiskInputs("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");

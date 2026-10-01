@@ -8,6 +8,7 @@ import {
   USDC,
   WSOL,
 } from "@sat/shared";
+import { createHash } from "node:crypto";
 const USDT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
 
 const QUOTE = new Set([USDC, USDT, WSOL]);
@@ -29,35 +30,42 @@ function num(v: unknown): number {
     const n = Number(v);
     if (Number.isFinite(n)) return n;
   }
-  return 0;
+  throw new Error("invalid-numeric-field");
 }
 
 function tokenQty(rec: Record<string, unknown>): number {
-  if (rec.rawTokenAmount != null && rec.decimals != null) {
-    const raw = num(rec.rawTokenAmount);
-    const d = num(rec.decimals);
-    if (d >= 0 && d <= 18) return raw / 10 ** d;
-  }
   const nested = rec.rawTokenAmount;
-  if (nested && typeof nested === "object") {
-    const n = nested as { tokenAmount?: unknown; decimals?: unknown; uiAmount?: unknown };
-    if (n.uiAmount != null) return num(n.uiAmount);
-    if (n.tokenAmount != null && n.decimals != null) return num(n.tokenAmount) / 10 ** num(n.decimals);
-    if (n.tokenAmount != null) return num(n.tokenAmount);
+  if (nested != null) {
+    const n = typeof nested === "object" ? nested as Record<string, unknown> : rec;
+    const raw = typeof nested === "object" ? n.tokenAmount : nested;
+    const decimals = n.decimals;
+    // Raw units are never silently reinterpreted as UI units.
+    if (raw == null || decimals == null) throw new Error("missing-token-decimals");
+    if (typeof raw === "string" ? !/^\d+$/.test(raw) : !Number.isSafeInteger(raw)) {
+      throw new Error("invalid-raw-token-amount");
+    }
+    const d = num(decimals);
+    if (!Number.isInteger(d) || d < 0 || d > 255) throw new Error("invalid-token-decimals");
+    const qty = num(raw) / 10 ** d;
+    if (qty < 0 || !Number.isFinite(qty) || (num(raw) > 0 && qty === 0)) throw new Error("invalid-token-quantity");
+    return qty;
   }
-  if (rec.tokenAmount != null) return num(rec.tokenAmount);
-  if (rec.uiAmount != null) return num(rec.uiAmount);
-  if (rec.amount != null) return num(rec.amount);
-  return 0;
+  const qty = num(rec.tokenAmount ?? rec.uiAmount ?? rec.amount);
+  if (qty < 0) throw new Error("invalid-token-quantity");
+  return qty;
 }
 
 function tsIso(blockTime: number | null): string {
-  if (blockTime && blockTime > 1_000_000_000) return new Date(blockTime * 1000).toISOString();
-  if (blockTime && blockTime > 1e12) return new Date(blockTime).toISOString();
-  return new Date(0).toISOString();
+  const ms = blockTime && blockTime > 1e12 ? blockTime : (blockTime ?? 0) * 1000;
+  const date = new Date(ms);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : new Date(0).toISOString();
 }
 
 export function normalizeParsedEventsItem(row: unknown, wallet: string | null): NormalizedChainEvent | null {
+  try { return normalizeParsedEventsItemUnsafe(row, wallet); } catch { return null; }
+}
+
+function normalizeParsedEventsItemUnsafe(row: unknown, wallet: string | null): NormalizedChainEvent | null {
   if (!row || typeof row !== "object") return null;
   const env = row as {
     signature?: string;
@@ -85,7 +93,7 @@ export function normalizeParsedEventsItem(row: unknown, wallet: string | null): 
     });
   }
   const parsed = env.parsed;
-  if (!parsed) return null;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
   return fromParsedBody(String(env.signature ?? ""), parsed, wallet, "helius-parsed-events");
 }
 
@@ -108,6 +116,8 @@ function fromParsedBody(
         .filter(Boolean),
     ),
   ];
+  if (parsed.nativeTransfers != null && !Array.isArray(parsed.nativeTransfers)) throw new Error("invalid-native-transfers");
+  if (parsed.tokenTransfers != null && !Array.isArray(parsed.tokenTransfers)) throw new Error("invalid-token-transfers");
   const native = Array.isArray(parsed.nativeTransfers) ? parsed.nativeTransfers : [];
   const tokens = Array.isArray(parsed.tokenTransfers) ? parsed.tokenTransfers : [];
   let swapHint = null;
@@ -133,19 +143,20 @@ function fromParsedBody(
     }
   }
   const failed =
-    parsed.transactionStatus === "ERROR" || parsed.error != null || parsed.transactionError != null;
+    parsed.transactionStatus === "ERROR" || parsed.transactionStatus === "FAILED" || parsed.error != null || parsed.transactionError != null;
+  const unknown = parsed.transactionStatus != null && parsed.transactionStatus !== "OK" && !failed;
   return NormalizedChainEventSchema.parse({
     signature,
     slot: parsed.slot == null ? null : num(parsed.slot),
     blockTime: parsed.blockTime == null && parsed.timestamp == null ? null : num(parsed.blockTime ?? parsed.timestamp),
     wallet,
-    status: failed ? "FAILED" : "OK",
+    status: failed ? "FAILED" : unknown ? "UNKNOWN" : "OK",
     feeLamports: parsed.fee == null ? null : num(parsed.fee),
     feePayer: parsed.feePayer == null ? null : String(parsed.feePayer),
     programs,
     summaryType: st,
     nativeDeltas: native.flatMap((n) => {
-      if (!n || typeof n !== "object") return [];
+      if (!n || typeof n !== "object" || Array.isArray(n)) throw new Error("invalid-native-transfer");
       const r = n as { fromUserAccount?: string | null; toUserAccount?: string | null; amount?: unknown };
       return [
         {
@@ -156,10 +167,10 @@ function fromParsedBody(
       ];
     }),
     tokenDeltas: tokens.flatMap((t) => {
-      if (!t || typeof t !== "object") return [];
+      if (!t || typeof t !== "object" || Array.isArray(t)) throw new Error("invalid-token-transfer");
       const r = t as Record<string, unknown>;
       const mint = mintOk(r.mint);
-      if (!mint) return [];
+      if (!mint) throw new Error("invalid-token-mint");
       return [
         {
           mint,
@@ -179,9 +190,13 @@ function fromParsedBody(
 }
 
 export function normalizeEnhancedTx(row: unknown, wallet: string | null): NormalizedChainEvent | null {
+  try { return normalizeEnhancedTxUnsafe(row, wallet); } catch { return null; }
+}
+
+function normalizeEnhancedTxUnsafe(row: unknown, wallet: string | null): NormalizedChainEvent | null {
   if (!row || typeof row !== "object") return null;
   const tx = row as Record<string, unknown>;
-  const signature = String(tx.signature ?? "");
+  const signature = typeof tx.signature === "string" ? tx.signature : "";
   if (!signature) return null;
   const type = tx.type != null ? String(tx.type).toLowerCase() : null;
   const swap = tx.events && typeof tx.events === "object" ? (tx.events as { swap?: Record<string, unknown> }).swap : undefined;
@@ -206,6 +221,8 @@ export function normalizeEnhancedTx(row: unknown, wallet: string | null): Normal
       };
     }
   }
+  if (tx.tokenTransfers != null && !Array.isArray(tx.tokenTransfers)) throw new Error("invalid-token-transfers");
+  if (tx.nativeTransfers != null && !Array.isArray(tx.nativeTransfers)) throw new Error("invalid-native-transfers");
   const tokens: unknown[] = Array.isArray(tx.tokenTransfers) ? [...tx.tokenTransfers] : [];
   const natives: unknown[] = Array.isArray(tx.nativeTransfers) ? [...tx.nativeTransfers] : [];
   if (swap) {
@@ -213,10 +230,10 @@ export function normalizeEnhancedTx(row: unknown, wallet: string | null): Normal
     const outs = Array.isArray(swap.tokenOutputs) ? swap.tokenOutputs : [];
     if (!tokens.length) {
       for (const t of ins) {
-        if (!t || typeof t !== "object") continue;
+        if (!t || typeof t !== "object" || Array.isArray(t)) throw new Error("invalid-token-transfer");
         const r = t as Record<string, unknown>;
         const mint = mintOk(r.mint);
-        if (!mint) continue;
+        if (!mint) throw new Error("invalid-token-mint");
         tokens.push({
           mint,
           fromUserAccount: r.userAccount,
@@ -225,10 +242,10 @@ export function normalizeEnhancedTx(row: unknown, wallet: string | null): Normal
         });
       }
       for (const t of outs) {
-        if (!t || typeof t !== "object") continue;
+        if (!t || typeof t !== "object" || Array.isArray(t)) throw new Error("invalid-token-transfer");
         const r = t as Record<string, unknown>;
         const mint = mintOk(r.mint);
-        if (!mint) continue;
+        if (!mint) throw new Error("invalid-token-mint");
         tokens.push({
           mint,
           fromUserAccount: null,
@@ -248,27 +265,28 @@ export function normalizeEnhancedTx(row: unknown, wallet: string | null): Normal
       }
     }
   }
-  const failed = tx.transactionError != null || tx.err != null;
+  const failed = tx.transactionError != null || tx.err != null || tx.error != null || tx.transactionStatus === "ERROR" || tx.transactionStatus === "FAILED";
+  const unknown = tx.transactionStatus != null && tx.transactionStatus !== "OK" && !failed;
   return NormalizedChainEventSchema.parse({
     signature,
     slot: tx.slot == null ? null : num(tx.slot),
     blockTime: tx.timestamp == null ? null : num(tx.timestamp),
     wallet,
-    status: failed ? "FAILED" : "OK",
+    status: failed ? "FAILED" : unknown ? "UNKNOWN" : "OK",
     feeLamports: tx.fee == null ? null : num(tx.fee),
     feePayer: tx.feePayer == null ? null : String(tx.feePayer),
     programs: tx.source ? [String(tx.source)] : [],
     summaryType: type === "swap" || swap ? "swap" : type,
     nativeDeltas: natives.flatMap((n) => {
-      if (!n || typeof n !== "object") return [];
+      if (!n || typeof n !== "object" || Array.isArray(n)) throw new Error("invalid-native-transfer");
       const r = n as { fromUserAccount?: string | null; toUserAccount?: string | null; amount?: unknown };
       return [{ from: r.fromUserAccount ?? null, to: r.toUserAccount ?? null, amountLamports: num(r.amount) }];
     }),
     tokenDeltas: tokens.flatMap((t) => {
-      if (!t || typeof t !== "object") return [];
+      if (!t || typeof t !== "object" || Array.isArray(t)) throw new Error("invalid-token-transfer");
       const r = t as Record<string, unknown>;
       const mint = mintOk(r.mint);
-      if (!mint) return [];
+      if (!mint) throw new Error("invalid-token-mint");
       return [
         {
           mint,
@@ -320,7 +338,7 @@ function mkTrade(
 ): WalletTrade | null {
   if (!(qty > DUST)) return null;
   const parsed = WalletTradeSchema.safeParse({
-    signature: `${ev.signature}:${side}:${mint.slice(0, 8)}`,
+    signature: createHash("sha256").update(JSON.stringify([ev.signature, wallet, side, mint])).digest("hex"),
     timestamp: tsIso(ev.blockTime),
     mint,
     side,
@@ -347,8 +365,9 @@ function mkTrade(
  * False positives are rejected in favor of UNCLASSIFIED / transfers.
  */
 export function classifyWalletActivity(ev: NormalizedChainEvent, wallet: string): WalletTrade[] {
-  if (ev.status === "FAILED") return [];
+  if (ev.status !== "OK") return [];
   if (ev.parserStatus === "ERROR") return [];
+  if (!ev.blockTime || tsIso(ev.blockTime) === new Date(0).toISOString()) return [];
   const skip = new Set(["create_account", "create_token_account", "add_liquidity", "remove_liquidity"]);
   if (ev.summaryType && skip.has(ev.summaryType) && !ev.swapHint) return [];
 
@@ -382,8 +401,8 @@ export function classifyWalletActivity(ev: NormalizedChainEvent, wallet: string)
       }
       return out;
     }
-    push(inputMint, "UNKNOWN", 1, 0.2);
-    return out.filter((t) => t.side !== "UNKNOWN");
+    // There is no observed quantity for the hinted input. Do not fabricate one.
+    return [];
   }
 
   if (ev.summaryType === "swap") {
@@ -416,21 +435,24 @@ export function classifyWalletActivity(ev: NormalizedChainEvent, wallet: string)
   return out;
 }
 
-export function dedupeTrades(trades: WalletTrade[]): { trades: WalletTrade[]; duplicates: number } {
-  const seen = new Set<string>();
+export function dedupeTrades(trades: WalletTrade[]): { trades: WalletTrade[]; duplicates: number; conflicts: number } {
+  const seen = new Map<string, string>();
+  const conflicted = new Set<string>();
   const out: WalletTrade[] = [];
   let duplicates = 0;
   for (const t of trades) {
     const sig = t.sourceSignature ?? t.signature;
-    const key = `${sig}|${t.side}|${t.mint}`;
+    const key = JSON.stringify([sig, t.side, t.mint]);
+    const facts = JSON.stringify([t.timestamp, t.qty, t.priceUsd, t.usdNotional]);
     if (seen.has(key)) {
       duplicates += 1;
+      if (seen.get(key) !== facts) conflicted.add(sig);
       continue;
     }
-    seen.add(key);
+    seen.set(key, facts);
     out.push(t);
   }
-  return { trades: out, duplicates };
+  return { trades: out.filter((t) => !conflicted.has(t.sourceSignature ?? t.signature)), duplicates, conflicts: conflicted.size };
 }
 
 export function parseHeliusEnhancedTx(wallet: string, row: unknown): WalletTrade[] {

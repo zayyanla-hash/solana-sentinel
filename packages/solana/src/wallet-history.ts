@@ -1,6 +1,7 @@
 import { SolanaAddressSchema } from "@sat/shared";
 import { DEMO_WALLETS, getDemoWalletTrades } from "@sat/wallet-intel";
 import type { WalletHistoryProvider, WalletHistoryResult } from "./history-types";
+import { DurableWalletHistoryProvider } from "./durable-history";
 import {
   CompositeHeliusHistoryProvider,
   HeliusEnhancedTransactionsProvider,
@@ -60,10 +61,10 @@ export class HeliusWalletHistoryProvider extends HeliusEnhancedTransactionsProvi
 export function createWalletHistoryProvider(): WalletHistoryProvider {
   const key = process.env.HELIUS_API_KEY?.trim();
   if (!key) return new DemoWalletHistoryProvider();
-  return new CompositeHeliusHistoryProvider(
+  return durableIfConfigured(new CompositeHeliusHistoryProvider(
     new HeliusParsedEventsProvider(key),
     new HeliusEnhancedTransactionsProvider(key),
-  );
+  ));
 }
 
 export function createLiveWalletHistoryProvider(): WalletHistoryProvider {
@@ -73,10 +74,15 @@ export function createLiveWalletHistoryProvider(): WalletHistoryProvider {
       "HELIUS_API_KEY is required for live wallet analysis. Set it in .env.local and rerun. Demo fixtures will not be used.",
     );
   }
-  return new CompositeHeliusHistoryProvider(
+  return durableIfConfigured(new CompositeHeliusHistoryProvider(
     new HeliusParsedEventsProvider(key),
     new HeliusEnhancedTransactionsProvider(key),
-  );
+  ));
+}
+
+function durableIfConfigured(provider: WalletHistoryProvider): WalletHistoryProvider {
+  const directory = process.env.SAT_HISTORY_DIR?.trim();
+  return directory ? new DurableWalletHistoryProvider(provider, directory) : provider;
 }
 
 export { DEMO_WALLETS };

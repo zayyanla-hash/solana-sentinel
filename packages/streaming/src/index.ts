@@ -17,6 +17,7 @@ export interface StreamHealth {
   lastEventAt: string | null;
   reconnects: number;
   stale: boolean;
+  reason?: string;
 }
 
 export interface OnChainStreamProvider {
@@ -47,7 +48,6 @@ export class DemoStreamProvider implements OnChainStreamProvider, HistoricalChai
   readonly name = "demo-stream";
   readonly isDemo = true;
   private handlers = new Set<(ev: ChainEvent) => void>();
-  private seen = new Set<string>();
   private reconnects = 0;
   private lastEventAt: string | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -62,8 +62,6 @@ export class DemoStreamProvider implements OnChainStreamProvider, HistoricalChai
   }
 
   private emit(ev: ChainEvent): void {
-    if (this.seen.has(ev.id)) return;
-    this.seen.add(ev.id);
     this.lastEventAt = ev.timestamp;
     this.cursor += 1;
     for (const h of this.handlers) h(ev);
@@ -116,6 +114,7 @@ export class DemoStreamProvider implements OnChainStreamProvider, HistoricalChai
     this.closed = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    this.handlers.clear();
   }
 
   async walletHistory(address: string): Promise<ChainEvent[]> {
@@ -139,10 +138,8 @@ export class DemoStreamProvider implements OnChainStreamProvider, HistoricalChai
 }
 
 /**
- * Helius LaserStream / websocket adapter.
- * Credentials required: HELIUS_API_KEY. Without it, callers should use DemoStreamProvider.
- * Reconnects with exponential backoff. Events are idempotent by signature/id.
- * Docs: https://www.helius.dev/docs
+ * Unimplemented Helius stream placeholder. Subscribe explicitly fails so no
+ * caller can mistake injected fixtures for a live WebSocket connection.
  */
 export class HeliusStreamProvider implements OnChainStreamProvider {
   readonly name = "helius-laserstream";
@@ -151,42 +148,17 @@ export class HeliusStreamProvider implements OnChainStreamProvider {
   private seen = new Set<string>();
   private reconnects = 0;
   private lastEventAt: string | null = null;
-  private lastError: string | null = null;
   private closed = false;
-  private attempt = 0;
-  private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
-    private readonly apiKey: string,
-    private readonly wsUrl = process.env.HELIUS_WS_URL,
-  ) {
-    this.scheduleConnect();
-  }
+    _apiKey: string,
+    _wsUrl = process.env.HELIUS_WS_URL,
+  ) {}
 
-  private endpoint(): string {
-    return (
-      this.wsUrl ??
-      `wss://atlas-mainnet.helius-rpc.com/?api-key=${this.apiKey}`
-    );
-  }
-
-  private scheduleConnect(): void {
-    if (this.closed) return;
-    this.timer = setTimeout(() => this.connect(), backoffMs(this.attempt));
-  }
-
-  private connect(): void {
-    if (this.closed) return;
-    this.attempt += 1;
-    this.reconnects += 1;
-    this.lastError =
-      "Helius LaserStream WebSocket is not opened in this runtime (no credentials exercised). Batch fallback remains available.";
-  }
-
-  async subscribeWallet(_address: string): Promise<void> {}
-  async subscribeToken(_mint: string): Promise<void> {}
-  async subscribeProgram(_programId: string): Promise<void> {}
-  async subscribeTransactions(_filter?: string): Promise<void> {}
+  async subscribeWallet(_address: string): Promise<void> { throw new Error("helius-stream-not-implemented"); }
+  async subscribeToken(_mint: string): Promise<void> { throw new Error("helius-stream-not-implemented"); }
+  async subscribeProgram(_programId: string): Promise<void> { throw new Error("helius-stream-not-implemented"); }
+  async subscribeTransactions(_filter?: string): Promise<void> { throw new Error("helius-stream-not-implemented"); }
 
   onEvent(handler: (ev: ChainEvent) => void): () => void {
     this.handlers.add(handler);
@@ -194,25 +166,30 @@ export class HeliusStreamProvider implements OnChainStreamProvider {
   }
 
   ingest(ev: ChainEvent): void {
-    if (this.seen.has(ev.id)) return;
-    this.seen.add(ev.id);
+    if (this.closed) return;
+    const key = ev.signature ?? ev.id;
+    if (this.seen.has(key)) return;
+    this.seen.add(key);
+    if (this.seen.size > 4096) this.seen.delete(this.seen.values().next().value!);
     this.lastEventAt = ev.timestamp;
     for (const h of this.handlers) h(ev);
   }
 
   health(): StreamHealth {
     return {
-      status: this.lastEventAt ? "healthy" : "degraded",
+      status: "unavailable",
       connected: false,
       lastEventAt: this.lastEventAt,
       reconnects: this.reconnects,
       stale: true,
+      reason: "helius-stream-not-implemented",
     };
   }
 
   async close(): Promise<void> {
     this.closed = true;
-    if (this.timer) clearTimeout(this.timer);
+    this.handlers.clear();
+    this.seen.clear();
   }
 }
 

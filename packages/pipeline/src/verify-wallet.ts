@@ -43,7 +43,8 @@ function chronoOk(trades: WalletTrade[]): boolean {
 }
 
 export async function verifyLiveWallet(address: string): Promise<WalletVerificationReport> {
-  const history = await createLiveWalletHistoryProvider().getTrades(address);
+  const provider = createLiveWalletHistoryProvider();
+  const history = await provider.getTrades(address).finally(() => provider.close?.());
   const { trades, duplicates } = dedupeTrades(history.trades);
   const sorted = [...trades].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const quality = walletQualityReport(sorted, duplicates);
@@ -67,7 +68,7 @@ export async function verifyLiveWallet(address: string): Promise<WalletVerificat
     sellCount: quality.sellCount,
     transferCount: quality.transferCount,
     unknownCount: quality.unknownCount,
-    parseFailures: history.provenance.some((p) => /HTTP|error/i.test(p)) ? 1 : 0,
+    parseFailures: history.diagnostics?.rejected ?? (history.provenance.some((p) => /HTTP|error/i.test(p)) ? 1 : 0),
     duplicates,
     chronologicalOk: chronoOk(sorted),
     lotsOpened: lots.opened,

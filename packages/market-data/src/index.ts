@@ -139,7 +139,6 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = process.env.BIRDEYE_API_BASE ?? "https://public-api.birdeye.so",
-    private readonly fallback = new DemoMarketDataProvider(),
   ) {}
 
   private headers(): Record<string, string> {
@@ -153,7 +152,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
   async listTrending(limit = 20): Promise<CandidateAsset[]> {
     try {
       const url = `${this.baseUrl}/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=${limit}`;
-      const res = await fetch(url, { headers: this.headers() });
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
       if (!res.ok) throw new Error(`Birdeye HTTP ${res.status}`);
       const json = (await res.json()) as {
         data?: { tokens?: Array<Record<string, unknown>> };
@@ -198,7 +197,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
   async getAsset(mint: string): Promise<CandidateAsset | null> {
     try {
       const url = `${this.baseUrl}/defi/token_overview?address=${mint}`;
-      const res = await fetch(url, { headers: this.headers() });
+      const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
       if (!res.ok) throw new Error(`Birdeye HTTP ${res.status}`);
       const json = (await res.json()) as { data?: Record<string, unknown> };
       const t = json.data;
@@ -226,8 +225,6 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
       });
       return parsed.success ? parsed.data : null;
     } catch {
-      const demo = getDemoCandidates().some((c) => c.mint === mint);
-      if (demo) return this.fallback.getAsset(mint);
       return null;
     }
   }
@@ -246,9 +243,6 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
       this.ohlcvCache.set(key, { at: Date.now(), bars });
       return bars;
     } catch {
-      // Do not invent live bars. Demo fallback only for known demo mints.
-      const demo = getDemoCandidates().some((c) => c.mint === mint);
-      if (demo) return this.fallback.getOhlcv(mint, interval, limit);
       return [];
     }
   }
@@ -268,7 +262,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
     v3.searchParams.set("mode", "count");
     v3.searchParams.set("count_limit", String(Math.min(Math.max(limit, 1), 5000)));
     v3.searchParams.set("padding", "false");
-    const v3res = await fetch(v3, { headers: this.headers() });
+    const v3res = await fetch(v3, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
     if (v3res.ok) {
       const bars = parseBirdeyeOhlcv(await v3res.json());
       if (bars.length) return bars.slice(-limit);
@@ -279,7 +273,7 @@ export class BirdeyeMarketDataProvider implements MarketDataProvider {
     v1.searchParams.set("type", type);
     v1.searchParams.set("time_from", String(timeFrom));
     v1.searchParams.set("time_to", String(timeTo));
-    const v1res = await fetch(v1, { headers: this.headers() });
+    const v1res = await fetch(v1, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
     if (!v1res.ok) throw new Error(`Birdeye OHLCV HTTP ${v1res.status}`);
     return parseBirdeyeOhlcv(await v1res.json()).slice(-limit);
   }

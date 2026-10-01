@@ -152,11 +152,11 @@ export class JupiterSwapV2Provider implements ExecutionProvider {
     const started = Date.now();
     let res: Response;
     try {
-      res = await fetch(`${url}?${qs}`, { headers: this.headers() });
-    } catch (err) {
+      res = await fetch(`${url}?${qs}`, { headers: this.headers(), signal: AbortSignal.timeout(8_000) });
+    } catch {
       throw new QuoteProviderError(
         this.name,
-        `Jupiter Swap V2 network error: ${err instanceof Error ? err.message : String(err)}`,
+        "Jupiter Swap V2 request failed",
       );
     }
     if (!res.ok) {

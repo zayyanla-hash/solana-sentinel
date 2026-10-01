@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatClock, formatQty, shortAddress } from "./format";
 import { messageOf } from "./useTeamWorkspace";
 import { presentActivityOutcome } from "./status";
@@ -10,22 +10,24 @@ export function ActivityPanel({ wallet, load }: { wallet: string | null; load: (
   const [data, setData] = useState<ActivityResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const request = useRef(0); // only the latest request may update the panel
 
   const fetchActivity = useCallback(async (target: string) => {
+    const ticket = ++request.current;
     setLoading(true); setError(null); setData(null);
     try {
       const result = await load(target);
-      setData(result);
+      if (ticket === request.current) setData(result);
     } catch (e) {
-      setError(messageOf(e));
+      if (ticket === request.current) setError(messageOf(e));
     } finally {
-      setLoading(false);
+      if (ticket === request.current) setLoading(false);
     }
   }, [load]);
 
   useEffect(() => {
     if (wallet) void fetchActivity(wallet);
-    else { setData(null); setError(null); }
+    else { request.current += 1; setData(null); setError(null); setLoading(false); }
   }, [wallet, fetchActivity]);
 
   if (!wallet) {

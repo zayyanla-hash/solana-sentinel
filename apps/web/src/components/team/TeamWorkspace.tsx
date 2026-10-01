@@ -115,7 +115,7 @@ export function TeamWorkspace() {
 
         {phase === "ready" && team && (
           <>
-            <HealthStrip team={team} monitor={monitor} monitorError={errors.monitor} lastSuccessAt={ws.lastSuccessAt} refreshError={ws.refreshError} refreshing={ws.refreshing} onRefresh={() => void ws.refresh()} />
+            <HealthStrip team={team} monitor={monitor} monitorError={errors.monitor} monitorUpdatedAt={ws.monitorUpdatedAt} lastSuccessAt={ws.lastSuccessAt} refreshError={ws.refreshError} refreshing={ws.refreshing} onRefresh={() => void ws.refresh()} />
             <div role="tablist" aria-label="Workspace" className="flex gap-1 overflow-x-auto rounded-lg border border-[var(--line)] bg-[var(--bg-1)]/90 p-1">
               {TABS.map((t, i) => (
                 <button key={t.id} ref={(el) => { tabRefs.current[t.id] = el; }} role="tab" id={`tab-${t.id}`} type="button" aria-selected={tab === t.id} aria-controls={`panel-${t.id}`} tabIndex={tab === t.id ? 0 : -1}

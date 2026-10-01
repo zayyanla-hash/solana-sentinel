@@ -34,6 +34,7 @@ export function useTeamWorkspace() {
   const [monitor, setMonitor] = useState<MonitorHealth | null>(null);
   const [errors, setErrors] = useState<Errors>({});
   const [lastSuccessAt, setLastSuccessAt] = useState<number | null>(null);
+  const [monitorUpdatedAt, setMonitorUpdatedAt] = useState<number | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export function useTeamWorkspace() {
   const teamRef = useRef<TeamStatus | null>(null);
   const pendingRef = useRef<string | null>(null);
   const sequence = useRef(0);
+  const session = useRef(0); // bumped whenever a session ends; late responses from an ended session are discarded
 
   const changePhase = useCallback((next: Phase) => {
     phaseRef.current = next;
@@ -54,6 +56,7 @@ export function useTeamWorkspace() {
   const endSession = useCallback(
     (reason: SignOutReason) => {
       sequence.current += 1; // ignore responses still in flight
+      session.current += 1;
       teamRef.current = null;
       setTeam(null);
       setState(null);
@@ -63,6 +66,7 @@ export function useTeamWorkspace() {
       setNotice(null);
       setRefreshError(null);
       setLastSuccessAt(null);
+      setMonitorUpdatedAt(null);
       setSignOutReason(reason);
       changePhase("signedOut");
     },
@@ -101,7 +105,7 @@ export function useTeamWorkspace() {
       setTeam(status);
       if (snapshot.status === "fulfilled") setState(snapshot.value);
       else next.state = messageOf(snapshot.reason);
-      if (health.status === "fulfilled") setMonitor(health.value);
+      if (health.status === "fulfilled") { setMonitor(health.value); setMonitorUpdatedAt(Date.now()); }
       else next.monitor = messageOf(health.reason);
       setErrors(next);
       setLastSuccessAt(Date.now());
@@ -165,6 +169,7 @@ export function useTeamWorkspace() {
       if (pendingRef.current) return null;
       pendingRef.current = "signin";
       setPending("signin");
+      setIssued(null);
       try {
         await teamAction("login", { username, credential });
         await refresh();
@@ -203,8 +208,10 @@ export function useTeamWorkspace() {
       run(
         "team:member",
         async () => {
+          const owner = session.current;
           const result = await api<{ credential: string }>("/api/team/member", { username });
-          setIssued(result.credential);
+          // Never show a credential issued in a session that has since ended (e.g. signed out mid-request).
+          if (owner === session.current) setIssued(result.credential);
         },
         "Credential generated",
         "team",
@@ -225,7 +232,7 @@ export function useTeamWorkspace() {
   );
 
   return {
-    phase, signOutReason, team, state, monitor, errors, lastSuccessAt, refreshError, refreshing,
+    phase, signOutReason, team, state, monitor, errors, lastSuccessAt, monitorUpdatedAt, refreshError, refreshing,
     pending, notice, issued,
     refresh, run, signIn, signOut, generateCredential, loadActivity,
     hideIssued: () => setIssued(null),

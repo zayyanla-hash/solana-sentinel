@@ -22,7 +22,7 @@ export function ConnectionSetup({ team, run, pending, notice, onDismiss }: { tea
     if (!isBase58Address(trimmedProbe) || !endpoint.startsWith("https://")) return;
     setResult(null);
     const ok = await run("setup:rpc", async () => {
-      const outcome = await teamAction<RpcResult>("rpc", { endpoint, wallet: probe });
+      const outcome = await teamAction<RpcResult>("rpc", { endpoint, wallet: trimmedProbe });
       setResult(outcome);
     }, "Mainnet connection verified and saved", "rpc");
     if (ok) { setEndpoint(""); setProbe(""); setTouched(false); } // never keep the endpoint in the page

@@ -12,6 +12,7 @@ import tempfile
 import time
 import unittest
 import xml.etree.ElementTree as ET
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/mac-release.py"
@@ -60,13 +61,66 @@ class MacReleaseTest(unittest.TestCase):
         self.assertEqual(len(dumps), 1)
         manifest = json.loads(dumps[0].with_suffix(".json").read_text())
         self.assertEqual(manifest["fingerprints"]["backup_probe"]["rows"], 1)
-        mac.restore_check()
+        recovery = dumps[0].with_suffix(".config.json")
+        recovery_bytes = recovery.read_bytes()
+        recovered = json.loads(recovery_bytes)["settings"]
+        self.assertEqual(recovery.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(recovered["SAT_CONFIG_KEY"], mac.env_values()["SAT_CONFIG_KEY"])
+        self.assertNotIn("DATABASE_URL", recovered)
+        self.assertNotIn("SENTINEL_TEAM_ORIGIN", recovered)
+        self.assertTrue(mac.restore_check())
+        recovery.write_bytes(recovery_bytes + b"tampered")
+        with patch.object(mac, "restore_temp") as restore:
+            with self.assertRaisesRegex(RuntimeError, "configuration checksum"):
+                mac.restore_check()
+            restore.assert_not_called()
+        recovery.write_bytes(recovery_bytes)
+        recovery.chmod(0o644)
+        with self.assertRaisesRegex(RuntimeError, "private file"):
+            mac.restore_check()
+        recovery.chmod(0o600)
+        actual_run = mac.run
+        copied = []
+        def capture_copy(command, **kwargs):
+            if command[0] == "scp":
+                copied.append(command)
+                return None
+            return actual_run(command, **kwargs)
+        with patch.object(mac, "run", side_effect=capture_copy):
+            mac.copy_backup("member@backup-mac:/private/backups")
+        self.assertEqual(copied[0][2:-1], [str(dumps[0]), str(dumps[0].with_suffix(".json")), str(recovery)])
+        manifest_path = dumps[0].with_suffix(".json")
+        manifest_bytes = manifest_path.read_bytes()
+        manifest.pop("recoveryConfig")
+        manifest["formatVersion"] = 1
+        manifest_path.write_text(json.dumps(manifest))
+        self.assertFalse(mac.restore_check())
+        with self.assertRaisesRegex(RuntimeError, "new backup"):
+            mac.copy_backup("member@backup-mac:/private/backups")
+        manifest_path.write_bytes(manifest_bytes)
         mac.psql("update backup_probe set value='changed' where id=1", db="sentinel_live", admin=False)
         mac.restore_check()  # compares the archive's consistent snapshot, not the now-changing live DB
         with dumps[0].open("ab") as stream:
             stream.write(b"tampered")
         with self.assertRaisesRegex(RuntimeError, "checksum"):
             mac.restore_check()
+
+    def test_rotation_during_backup_preserves_previous_verified_archive(self):
+        mac = self.module
+        mac.setup()
+        subprocess.run([str(PG_BIN / "pg_ctl"), "-D", str(mac.BASE / "postgres"),
+                        "-l", str(mac.BASE / "logs/test-postgres.log"),
+                        "-o", f"-h 127.0.0.1 -p {mac.PORT_DB} -c unix_socket_directories=''", "-w", "start"],
+                       check=True, stdout=subprocess.DEVNULL)
+        mac.backup()
+        before = {p.name: p.read_bytes() for p in (mac.BASE / "backups").iterdir()}
+        settings = mac.recovery_settings()
+        with patch.object(mac, "recovery_settings", side_effect=[settings, {**settings, "SAT_CONFIG_KEY": "f" * 64}]):
+            with self.assertRaisesRegex(RuntimeError, "changed during backup"):
+                mac.backup()
+        self.assertEqual(before, {p.name: p.read_bytes() for p in (mac.BASE / "backups").iterdir()})
+        self.assertEqual(json.loads((mac.BASE / "backup-health.json").read_text())["status"], "failed")
+        self.assertTrue(mac.restore_check())
 
     def test_private_service_files_and_bounded_logs(self):
         mac = self.module

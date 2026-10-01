@@ -13,7 +13,7 @@ export function presentMonitor(status: string | null | undefined, error?: string
     case "HEALTHY":
       return { tone: "ok", label: "Monitoring current", detail: "All watched wallets polled within 2 min" };
     case "DEGRADED":
-      return { tone: "warn", label: "Monitoring degraded", detail: "Some wallets stale, erroring, or alerts pending" };
+      return { tone: "warn", label: "Monitoring degraded", detail: "Check wallet freshness, worker, storage and pending alerts" };
     case "WAITING_FOR_WALLETS":
       return { tone: "neutral", label: "No wallets yet", detail: "Add a wallet to start monitoring" };
     case "NOT_CONFIGURED":
@@ -40,6 +40,14 @@ export function presentWorker(worker: MonitorHealth["worker"]): Presented {
   }
 }
 
+export function presentStorage(storage: MonitorHealth["storage"]): Presented {
+  const free = typeof storage?.availableBytes === "number" && Number.isFinite(storage.availableBytes) && storage.availableBytes >= 0
+    ? `${(storage.availableBytes / 1024 ** 3).toFixed(1)} GiB free` : undefined;
+  if (storage?.status === "OK" && free) return { tone: "ok", label: free };
+  if (storage?.status === "LOW") return { tone: "warn", label: "Disk space low", detail: free };
+  return { tone: "warn", label: "Disk space unknown", detail: "Check available space on the host Mac" };
+}
+
 export function presentBackup(
   entry: { status: string; lastSuccessAt?: string | null } | undefined,
   kind: "backup" | "copy",
@@ -53,6 +61,8 @@ export function presentBackup(
       return { tone: "warn", label: `${noun} overdue`, detail };
     case "FAILED":
       return { tone: "bad", label: `${noun} failed`, detail };
+    case "DATABASE_ONLY":
+      return { tone: "warn", label: `${noun} database only`, detail: "Create a new backup including the configuration recovery key" };
     case "NOT_CONFIGURED":
       return { tone: "neutral", label: kind === "backup" ? "Backups not configured" : "Off-host copy not configured" };
     case undefined:

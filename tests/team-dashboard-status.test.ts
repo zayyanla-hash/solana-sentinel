@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collapseAudit, describeError, humanizeAction, presentActivityOutcome, presentAuditOutcome, presentBackup, presentDelivery,
-  presentDestination, presentMonitor, presentRpc, presentTelegram, presentWallet, presentWorker, setupSteps,
+  presentDestination, presentMonitor, presentRpc, presentTelegram, presentWallet, presentWorker, presentStorage, setupSteps,
 } from "../apps/web/src/components/team/status";
 import { formatAge, formatClock, formatQty, formatTime, isBase58Address, shortAddress } from "../apps/web/src/components/team/format";
 
@@ -346,5 +346,22 @@ describe("format additions", () => {
     expect(maskChatId("5550004417")).toBe("••••4417");
     expect(maskChatId("-100123456")).toBe("••••3456");
     expect(maskChatId(null)).toBe("—");
+  });
+});
+
+
+describe("storage warnings in the shared dashboard", () => {
+  const storage = { status: "LOW", availableBytes: 2 * 1024 ** 3, totalBytes: 100 * 1024 ** 3, availablePercent: 2, minimumAvailableBytes: 5 * 1024 ** 3 };
+  it("shows low physical capacity even when wallet checkpoints are current", () => {
+    const m = monitor({ status: "DEGRADED", storage });
+    expect(heroSummary({ monitor: m, addresses: [A, B] }).reason).toContain("low on disk space");
+    expect(needsAttention({ monitor: m, team: team(), addresses: [A, B] })).toContainEqual(expect.objectContaining({ key: "storage", tone: "warn", title: "Disk space low" }));
+    expect(systemRows(m, team(), Date.now()).find((row) => row.key === "storage")).toMatchObject({ tone: "warn", value: "Disk space low · 2.0 GiB free" });
+  });
+  it("keeps unknown or invalid capacity visible", () => {
+    expect(presentStorage(undefined)).toMatchObject({ tone: "warn", label: "Disk space unknown" });
+    expect(presentStorage({ ...storage, status: "OK", availableBytes: NaN }).tone).toBe("warn");
+    expect(presentStorage({ ...storage, status: "OK", availableBytes: 10 * 1024 ** 3 })).toMatchObject({ tone: "ok", label: "10.0 GiB free" });
+    expect(needsAttention({ monitor: monitor({ storage: { ...storage, status: "UNKNOWN", availableBytes: null } }), team: team(), addresses: [A, B] })).toContainEqual(expect.objectContaining({ key: "storage", title: "Disk space unknown" }));
   });
 });

@@ -1,6 +1,6 @@
 # Shared Mac release verification
 
-The shared monitoring release is installed on the designated Mac. It is a release candidate pending external setup and two-Mac acceptance, not a fully operational shared deployment.
+The shared monitoring release is installed on the previous host Mac; migration to the collaborator’s Mac is pending. It is a release candidate pending external setup and two-Mac acceptance, not a fully operational shared deployment.
 
 ## Verified locally
 
@@ -19,9 +19,19 @@ The shared monitoring release is installed on the designated Mac. It is a releas
 
 - Enter the dedicated Helius HTTPS RPC endpoint in protected Setup and pass the connection probe. Having an integration elsewhere does not establish this worker's configured credentials or capacity.
 - Create/configure the shared Telegram bot and verify each member's destination. No real Telegram message has been sent during verification; transport and queue failures were tested with controlled responses.
-- Enroll both Macs in Tailscale; restrict access to the two members and configure the exact private HTTPS origin. Tailscale is installed and this host is enrolled. Serve activation, access-policy restriction and collaborator enrollment remain pending.
+- The previous host has private Tailscale HTTPS Serve, an exact origin, and an HTTPS-only access policy for the two intended identities. Independent app logins over HTTPS, secure cookies, logout and rejected old-origin mutations were verified on that Mac. The collaborator’s exact Tailscale identity was approved; no device was registered under it at the latest check. New-host enrollment, Serve and both physical Mac checks remain pending.
 - Configure off-host backup copying and restore from a copied backup.
 - Verify both actual Macs can log in and receive a real supported live transaction alert; run a sustained production pilot and report its actual duration.
-- The merged frontend and shared-release PR checks passed. Mac-specific follow-up fixes are in PR #4; its latest hosted checks are pending at this checkpoint.
+- The merged frontend and shared-release PR checks passed. PR #4’s checkpoint `59877ec` passed all three hosted checks. The follow-up changes below remain reviewable and have not been installed into the running services.
 
 No wallet keys are required or requested. The app does not sign, broadcast or execute transactions. Jupiter quoting/routing remains separate from monitoring.
+
+## Follow-up recovery and capacity fixes
+
+- Local validation of the follow-up source: 421 tests in 41 files passed with disposable PostgreSQL integration enabled; typecheck, lint, complete production builds and basic secret scan passed.
+- Six PostgreSQL-backed Mac tooling tests passed. Backups now include a private, checksummed recovery configuration sidecar alongside the database archive and fingerprint manifest. Checks reject sidecar tampering and broad permissions before restoration, preserve the previous archive when the encryption key changes mid-backup, verify all three files in the copy workflow, and explicitly distinguish legacy database-only backups.
+- The root font families and their licenses are bundled from a pinned upstream revision, preserving the existing families while removing build-time Google font downloads.
+- Monitoring status and the shared dashboard report physical filesystem capacity, warn below 5 GiB or 10% available, and keep unknown capacity visible. Shared monitoring cannot report healthy with low or unknown capacity. Evidence is never automatically deleted by these warnings.
+- These changes were tested against staging and temporary isolated Mac databases. The installed release, production settings and database were not changed. An update and a new complete backup are required before the installed runtime gains these fixes.
+
+No real Telegram delivery, second-Mac acceptance, off-host restoration or sustained live monitoring was added by these checks.

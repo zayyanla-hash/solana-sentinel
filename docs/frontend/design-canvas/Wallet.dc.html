@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentinel — Wallet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;display=swap">
+<style>
+body{margin:0;background:#0E0C09}
+a{color:#CCFF00}a:hover{color:#E2FF66}
+.sx{font-family:'Geist',system-ui,sans-serif;color:#F4F1EA;background:#0E0C09;-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.serif{font-family:'Source Serif 4',Georgia,serif}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.p-ok{background:#00C805;color:#04140A}
+.p-warn{background:#FFB01F;color:#1C1303}
+.p-bad{background:#FF5000;color:#1C0A02}
+.p-neutral{background:#2B261E;color:#E9E4DA}
+.p-line{border:1px solid #3A342A;color:#E9E4DA}
+.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#CCFF00;color:#0E0C09;border:0;border-radius:999px;min-height:48px;padding:0 24px;font:600 15px 'Geist',sans-serif;cursor:pointer;text-decoration:none}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#F4F1EA;border:1px solid #3A342A;border-radius:999px;min-height:44px;padding:0 18px;font:600 14px 'Geist',sans-serif;cursor:pointer;text-decoration:none}
+.txtbtn{background:transparent;border:0;color:#F4F1EA;font:600 14px 'Geist',sans-serif;cursor:pointer;min-height:44px;padding:0 4px}
+.danger{color:#FF7A3D}
+.field{width:100%;box-sizing:border-box;height:48px;border-radius:12px;border:1px solid #3A342A;background:#18150F;color:#F4F1EA;padding:0 16px;font:15px 'Geist',sans-serif}
+.field::placeholder{color:#8F897D}
+.label{display:block;font-size:13px;font-weight:600;color:#D6D0C4;margin-bottom:8px}
+.hint{font-size:12px;color:#A39C8E;margin-top:6px;line-height:1.4}
+.muted{color:#A39C8E}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid #221E17}
+.navlink{color:#C9C3B6;text-decoration:none;font-size:15px;font-weight:500;padding:24px 0;border-bottom:2px solid transparent}
+.navlink:hover{color:#F4F1EA}
+.on{color:#F4F1EA;border-bottom-color:#CCFF00}
+.seg{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;font:600 13px 'Geist',sans-serif;color:#C9C3B6;background:transparent;border:0;cursor:pointer}
+.seg-on{background:#F4F1EA;color:#0E0C09}
+.eyebrow{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#A39C8E}
+.h2{font-size:22px;font-weight:600;letter-spacing:-0.01em;margin:0}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #CCFF00;outline-offset:2px}
+</style>
+</helmet>
+<div class="sx" style="min-height: 100vh">
+<header style="border-bottom: 1px solid #221E17">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 32px; display: flex; align-items: center; gap: 40px">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #F4F1EA"><svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="#F4F1EA" stroke-width="2"></circle><path d="M6 16c3-5.5 6.5-8 10-8s7 2.5 10 8c-3 5.5-6.5 8-10 8s-7-2.5-10-8z" stroke="#F4F1EA" stroke-width="2"></path><circle cx="16" cy="16" r="3.5" fill="#CCFF00"></circle></svg><span class="serif" style="font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Sentinel</span></a>
+<nav aria-label="Workspace" style="display: flex; gap: 28px"><a class="navlink" href="Main.dc.html">Home</a><a class="navlink on" href="Wallet.dc.html" aria-current="page">Wallets</a><a class="navlink" href="Alerts.dc.html">Alerts</a><a class="navlink" href="Setup.dc.html">Setup</a></nav>
+<div style="flex-grow: 1"></div>
+<label style="position: relative; display: block; width: 260px"><span class="sr">Search watched wallets</span><span style="position: absolute; left: 14px; top: 11px; color: #A39C8E"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span><input class="field" style="height: 40px; border-radius: 999px; padding-left: 42px; font-size: 14px" placeholder="Search wallets"></label>
+<button class="btn2" style="min-height: 40px; padding: 0 6px 0 6px; gap: 10px" aria-label="Account menu for designer"><span style="width: 28px; height: 28px; border-radius: 999px; background: #2B261E; display: inline-flex; align-items: center; justify-content: center; font-size: 13px">D</span><span style="padding-right: 10px">designer</span></button>
+</div>
+</header>
+<main style="max-width: 1280px; margin: 0 auto; padding: 40px 32px 80px; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 64px; box-sizing: border-box">
+<div style="display: flex; flex-direction: column; gap: 36px; min-width: 0">
+<section style="display: flex; flex-direction: column; gap: 12px">
+<a href="Main.dc.html" style="font-size: 14px; font-weight: 600; text-decoration: none; color: #A39C8E">Wallets</a>
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap"><h1 class="mono" style="margin: 0; font-size: 36px; font-weight: 500; letter-spacing: -0.02em">9WzDXwBb…L9zYtAWWM</h1><button class="btn2" style="min-height: 36px; padding: 0 14px; font-size: 13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a1 1 0 0 1 1-1h9"></path></svg>Copy address</button></div>
+<div style="display: flex; align-items: center; gap: 10px; font-size: 16px"><span class="pill p-ok">Current</span><span class="muted">Last head observation 12s ago · parser revision 3</span></div>
+</section>
+<section aria-labelledby="wa" style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div><span class="muted" style="font-size: 13px">Supported trade legs in the last 50 observations</span><div class="num" style="font-size: 56px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.05">14</div></div>
+<div role="group" aria-label="Filter observations" style="display: flex; gap: 4px"><button class="seg seg-on" aria-pressed="true">All 50</button><button class="seg" aria-pressed="false">Buys</button><button class="seg" aria-pressed="false">Sells</button><button class="seg" aria-pressed="false">Unclassified</button></div>
+</div>
+<svg viewBox="0 0 840 220" width="100%" style="display: block; height: auto" role="img" aria-label="Sample chart: cumulative observations in the recent window, with classified buys and sells marked"><line x1="8" y1="206" x2="832" y2="206" stroke="#3A342A" stroke-width="1" stroke-dasharray="2 5"></line><path d="M8,206.0 H10.6 V202.8 H36.1 V199.6 H38.6 V196.4 H42.9 V193.2 H65.1 V190.0 H103.4 V186.8 H108.9 V183.6 H110.9 V180.4 H135.6 V177.2 H143.9 V174.0 H162.0 V170.8 H179.9 V167.6 H186.0 V164.4 H199.4 V161.2 H199.7 V158.0 H201.5 V154.8 H202.5 V151.6 H279.0 V148.4 H290.6 V145.2 H311.6 V142.0 H313.7 V138.8 H381.4 V135.6 H400.5 V132.4 H402.8 V129.2 H407.4 V126.0 H418.0 V122.8 H424.2 V119.6 H430.3 V116.4 H462.9 V113.2 H486.6 V110.0 H490.3 V106.8 H515.5 V103.6 H531.2 V100.4 H576.4 V97.2 H609.3 V94.0 H616.7 V90.8 H629.9 V87.6 H636.5 V84.4 H650.9 V81.2 H661.1 V78.0 H662.1 V74.8 H673.7 V71.6 H681.6 V68.4 H721.5 V65.2 H729.0 V62.0 H744.6 V58.8 H772.6 V55.6 H792.4 V52.4 H806.3 V49.2 H830.0 V46.0 H832" fill="none" stroke="#F4F1EA" stroke-width="2" stroke-linejoin="round"></path><circle cx="36.1" cy="199.6" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><rect x="132.1" y="202.5" width="7" height="7" fill="#FF5000" transform="rotate(45 135.6 206)"></rect><circle cx="162.0" cy="170.8" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="179.9" cy="167.6" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><rect x="195.9" y="202.5" width="7" height="7" fill="#FF5000" transform="rotate(45 199.4 206)"></rect><circle cx="290.6" cy="145.2" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="400.5" cy="132.4" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="402.8" cy="129.2" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="486.6" cy="110.0" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><circle cx="490.3" cy="106.8" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><rect x="633.0" y="202.5" width="7" height="7" fill="#FF5000" transform="rotate(45 636.5 206)"></rect><rect x="657.6" y="202.5" width="7" height="7" fill="#FF5000" transform="rotate(45 661.1 206)"></rect><rect x="658.6" y="202.5" width="7" height="7" fill="#FF5000" transform="rotate(45 662.1 206)"></rect><circle cx="744.6" cy="58.8" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="792.4" cy="52.4" r="5" fill="#FF5000" stroke="#0E0C09" stroke-width="2"></circle><circle cx="806.3" cy="49.2" r="5" fill="#00C805" stroke="#0E0C09" stroke-width="2"></circle><line x1="400.5" y1="30" x2="400.5" y2="206" stroke="#6E685D" stroke-width="1"></line><circle cx="400.5" cy="132.4" r="7" fill="none" stroke="#FF5000" stroke-width="2"></circle></svg>
+<div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; color: #C9C3B6">
+<span style="display: inline-flex; align-items: center; gap: 8px"><span style="width: 16px; height: 2px; background: #F4F1EA"></span>Observations in window</span>
+<span style="display: inline-flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 999px; background: #00C805"></span>Buy</span>
+<span style="display: inline-flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 999px; background: #FF5000"></span>Sell</span>
+<span style="display: inline-flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; background: #FF5000; transform: rotate(45deg)"></span>Failed</span>
+<span class="muted">Unmarked steps are unclassified — the parser abstained, not proof of no trade.</span>
+</div>
+</section>
+<section aria-labelledby="wks" style="display: flex; flex-direction: column">
+<h2 id="wks" class="h2" style="margin-bottom: 4px">Key statistics</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Observations</span><span class="num" style="font-size: 20px; font-weight: 500">50</span><span class="muted" style="font-size: 12px">recent window</span></div><div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Buys</span><span class="num" style="font-size: 20px; font-weight: 500">9</span></div><div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Sells</span><span class="num" style="font-size: 20px; font-weight: 500">5</span></div><div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Unclassified</span><span class="num" style="font-size: 20px; font-weight: 500">33</span><span class="muted" style="font-size: 12px">parser abstained</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Failed</span><span class="num" style="font-size: 20px; font-weight: 500">3</span></div><div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Coverage</span><span class="num" style="font-size: 20px; font-weight: 500">Current</span><span class="muted" style="font-size: 12px">head polled 12s ago</span></div><div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Parser revision</span><span class="num" style="font-size: 20px; font-weight: 500">3</span></div><div style="display: flex; flex-direction: column; gap: 2px; padding: 14px 0; border-bottom: 1px solid #221E17"><span class="muted" style="font-size: 13px">Rules on this wallet</span><span class="num" style="font-size: 20px; font-weight: 500">2</span><span class="muted" style="font-size: 12px">1 enabled</span></div>
+</div>
+</section>
+<section aria-labelledby="wl" style="display: flex; flex-direction: column">
+<h2 id="wl" class="h2">Observations</h2>
+<h3 class="eyebrow" style="margin: 24px 0 0; padding-bottom: 8px; border-bottom: 1px solid #221E17">Today</h3>
+<div class="row">
+<span style="display: flex; align-items: center; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C805" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600" class="num">BUY 1,250.5 <span class="mono muted" style="font-size: 13px">So11…1112</span></span><span class="muted num" style="font-size: 13px">Slot 312,345,678 · 06:48</span></span></span>
+<span style="display: flex; align-items: center; gap: 4px"><span class="pill p-ok">Classified</span><a href="#" aria-label="Open transaction in Solana Explorer" style="color: #A39C8E; display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"></path></svg></a></span>
+</div><div class="row">
+<span style="display: flex; align-items: center; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8F897D" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"></circle></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600" class="num">Unsupported instruction layout</span><span class="muted num" style="font-size: 13px">Slot 312,345,600 · 06:35</span></span></span>
+<span style="display: flex; align-items: center; gap: 4px"><span class="pill p-neutral">Unclassified</span><a href="#" aria-label="Open transaction in Solana Explorer" style="color: #A39C8E; display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"></path></svg></a></span>
+</div><div class="row">
+<span style="display: flex; align-items: center; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF5000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 9v8H9"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600" class="num">SELL 88.0 <span class="mono muted" style="font-size: 13px">JUPy…vCN</span></span><span class="muted num" style="font-size: 13px">Slot 312,344,912 · 06:12</span></span></span>
+<span style="display: flex; align-items: center; gap: 4px"><span class="pill p-ok">Classified</span><a href="#" aria-label="Open transaction in Solana Explorer" style="color: #A39C8E; display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"></path></svg></a></span>
+</div><div class="row">
+<span style="display: flex; align-items: center; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF5000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3z"></path><path d="M12 10v4M12 17v.5"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span style="font-weight: 600" class="num">Transaction failed on chain</span><span class="muted num" style="font-size: 13px">Slot 312,344,500 · 05:58</span></span></span>
+<span style="display: flex; align-items: center; gap: 4px"><span class="pill p-bad">Failed</span><a href="#" aria-label="Open transaction in Solana Explorer" style="color: #A39C8E; display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4"></path></svg></a></span>
+</div>
+<p class="muted" style="font-size: 12px; margin: 16px 0 0">Most recent 50 observations. Reinterpretations by a newer parser do not send historical alerts. USD unavailable.</p>
+</section>
+</div>
+<aside aria-label="Alert on this wallet" style="display: flex; flex-direction: column; gap: 24px">
+<form style="border: 1px solid #221E17; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+<div role="tablist" aria-label="Alert side" style="display: flex; gap: 24px; border-bottom: 1px solid #221E17">
+<button role="tab" aria-selected="true" style="background: transparent; border: 0; border-bottom: 2px solid #CCFF00; color: #F4F1EA; font: 600 16px 'Geist', sans-serif; padding: 0 0 12px; min-height: 44px; cursor: pointer">Alert on buys</button>
+<button role="tab" aria-selected="false" style="background: transparent; border: 0; border-bottom: 2px solid transparent; color: #A39C8E; font: 600 16px 'Geist', sans-serif; padding: 0 0 12px; min-height: 44px; cursor: pointer">Alert on sells</button>
+</div>
+<label><span class="label">Rule name</span><input class="field" value="Wallet buy"></label>
+<label><span class="label">Token filter <span class="muted" style="font-weight: 400">(optional)</span></span><input class="field mono" style="font-size: 13px" placeholder="Any token"></label>
+<label><span class="label">Cooldown</span><span style="display: flex; align-items: center; gap: 10px"><input class="field num" style="width: 120px" value="60"><span class="muted">minutes</span></span><span class="hint" style="display: block">0–10080. Repeat alerts within the cooldown are suppressed.</span></label>
+<div style="display: flex; justify-content: space-between; font-size: 14px; padding: 12px 0; border-top: 1px solid #221E17"><span class="muted">Delivered to</span><span>Shared inbox + verified Telegram</span></div>
+<button class="cta" type="submit" style="width: 100%">Create buy alert</button>
+<p class="hint" style="margin: -8px 0 0; text-align: center">Applies to future finalized, supported activity only.</p>
+</form>
+<section style="border: 1px solid #221E17; border-radius: 16px; padding: 8px 24px">
+<div class="row"><span style="display: flex; flex-direction: column"><span style="font-weight: 600">Wallet sell</span><span class="muted" style="font-size: 13px">SELL · this wallet · any token · 30 min cooldown</span></span><button role="switch" aria-checked="true" aria-label="Wallet sell enabled" style="width: 48px; height: 28px; border-radius: 999px; border: 0; background: #00C805; position: relative; cursor: pointer"><span style="position: absolute; right: 3px; top: 3px; width: 22px; height: 22px; border-radius: 999px; background: #F4F1EA"></span></button></div>
+<div class="row" style="border-bottom: 0"><span style="display: flex; flex-direction: column"><span style="font-weight: 600">JUP buys</span><span class="muted" style="font-size: 13px">BUY · this wallet · JUPy…vCN · 1 day cooldown</span></span><button role="switch" aria-checked="false" aria-label="JUP buys enabled" style="width: 48px; height: 28px; border-radius: 999px; border: 0; background: #3A342A; position: relative; cursor: pointer"><span style="position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 999px; background: #C9C3B6"></span></button></div>
+</section>
+<button class="txtbtn danger" style="align-self: flex-start">Remove from watchlist</button>
+</aside>
+</main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1440, "height": 1240}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

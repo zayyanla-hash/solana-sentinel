@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sentinel — Alerts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;display=swap">
+<style>
+body{margin:0;background:#0E0C09}
+a{color:#CCFF00}a:hover{color:#E2FF66}
+.sx{font-family:'Geist',system-ui,sans-serif;color:#F4F1EA;background:#0E0C09;-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:'Geist Mono',ui-monospace,monospace}
+.serif{font-family:'Source Serif 4',Georgia,serif}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.p-ok{background:#00C805;color:#04140A}
+.p-warn{background:#FFB01F;color:#1C1303}
+.p-bad{background:#FF5000;color:#1C0A02}
+.p-neutral{background:#2B261E;color:#E9E4DA}
+.p-line{border:1px solid #3A342A;color:#E9E4DA}
+.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#CCFF00;color:#0E0C09;border:0;border-radius:999px;min-height:48px;padding:0 24px;font:600 15px 'Geist',sans-serif;cursor:pointer;text-decoration:none}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:transparent;color:#F4F1EA;border:1px solid #3A342A;border-radius:999px;min-height:44px;padding:0 18px;font:600 14px 'Geist',sans-serif;cursor:pointer;text-decoration:none}
+.txtbtn{background:transparent;border:0;color:#F4F1EA;font:600 14px 'Geist',sans-serif;cursor:pointer;min-height:44px;padding:0 4px}
+.danger{color:#FF7A3D}
+.field{width:100%;box-sizing:border-box;height:48px;border-radius:12px;border:1px solid #3A342A;background:#18150F;color:#F4F1EA;padding:0 16px;font:15px 'Geist',sans-serif}
+.field::placeholder{color:#8F897D}
+.label{display:block;font-size:13px;font-weight:600;color:#D6D0C4;margin-bottom:8px}
+.hint{font-size:12px;color:#A39C8E;margin-top:6px;line-height:1.4}
+.muted{color:#A39C8E}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid #221E17}
+.navlink{color:#C9C3B6;text-decoration:none;font-size:15px;font-weight:500;padding:24px 0;border-bottom:2px solid transparent}
+.navlink:hover{color:#F4F1EA}
+.on{color:#F4F1EA;border-bottom-color:#CCFF00}
+.seg{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;font:600 13px 'Geist',sans-serif;color:#C9C3B6;background:transparent;border:0;cursor:pointer}
+.seg-on{background:#F4F1EA;color:#0E0C09}
+.eyebrow{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#A39C8E}
+.h2{font-size:22px;font-weight:600;letter-spacing:-0.01em;margin:0}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #CCFF00;outline-offset:2px}
+</style>
+</helmet>
+<div class="sx" style="min-height: 100vh">
+<header style="border-bottom: 1px solid #221E17">
+<div style="max-width: 1280px; margin: 0 auto; padding: 0 32px; display: flex; align-items: center; gap: 40px">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #F4F1EA"><svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="14" stroke="#F4F1EA" stroke-width="2"></circle><path d="M6 16c3-5.5 6.5-8 10-8s7 2.5 10 8c-3 5.5-6.5 8-10 8s-7-2.5-10-8z" stroke="#F4F1EA" stroke-width="2"></path><circle cx="16" cy="16" r="3.5" fill="#CCFF00"></circle></svg><span class="serif" style="font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Sentinel</span></a>
+<nav aria-label="Workspace" style="display: flex; gap: 28px"><a class="navlink" href="Main.dc.html">Home</a><a class="navlink" href="Wallet.dc.html">Wallets</a><a class="navlink on" href="Alerts.dc.html" aria-current="page">Alerts</a><a class="navlink" href="Setup.dc.html">Setup</a></nav>
+<div style="flex-grow: 1"></div>
+<label style="position: relative; display: block; width: 260px"><span class="sr">Search watched wallets</span><span style="position: absolute; left: 14px; top: 11px; color: #A39C8E"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span><input class="field" style="height: 40px; border-radius: 999px; padding-left: 42px; font-size: 14px" placeholder="Search wallets"></label>
+<button class="btn2" style="min-height: 40px; padding: 0 6px 0 6px; gap: 10px" aria-label="Account menu for designer"><span style="width: 28px; height: 28px; border-radius: 999px; background: #2B261E; display: inline-flex; align-items: center; justify-content: center; font-size: 13px">D</span><span style="padding-right: 10px">designer</span></button>
+</div>
+</header>
+<main style="max-width: 1280px; margin: 0 auto; padding: 48px 32px 80px; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 64px; box-sizing: border-box">
+<div style="display: flex; flex-direction: column; gap: 28px; min-width: 0">
+<div style="display: flex; flex-direction: column; gap: 8px"><span class="eyebrow">Shared inbox</span><h1 style="margin: 0; font-size: 48px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.05">Alerts</h1></div>
+<div role="tablist" aria-label="Alert views" style="display: flex; gap: 4px"><button role="tab" aria-selected="true" class="seg seg-on">Inbox</button><button role="tab" aria-selected="false" class="seg">Rules · 3</button></div>
+<section aria-label="Inbox"><article class="row" style="align-items: flex-start; ">
+<span style="display: flex; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C805" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><h3 style="margin: 0; font-size: 15px; font-weight: 600">Wallet buy</h3><span class="num" style="font-size: 14px; color: #D6D0C4">BUY 1,250.5 So11…1112 · 9WzD…AWWM</span><span class="muted" style="font-size: 12px">In inbox</span></span></span>
+<span class="muted num" style="font-size: 13px; white-space: nowrap">2m</span>
+</article><article class="row" style="align-items: flex-start; ">
+<span style="display: flex; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF5000" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7l10 10M17 9v8H9"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><h3 style="margin: 0; font-size: 15px; font-weight: 600">Wallet sell</h3><span class="num" style="font-size: 14px; color: #D6D0C4">SELL 88.0 JUPy…vCN · 9WzD…AWWM</span><span class="muted" style="font-size: 12px">In inbox</span></span></span>
+<span class="muted num" style="font-size: 13px; white-space: nowrap">38m</span>
+</article><article class="row" style="align-items: flex-start; ">
+<span style="display: flex; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C805" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><h3 style="margin: 0; font-size: 15px; font-weight: 600">Wallet buy</h3><span class="num" style="font-size: 14px; color: #D6D0C4">BUY 410.0 So11…1112 · 9WzD…AWWM</span><span class="muted" style="font-size: 12px">Suppressed · cooldown</span></span></span>
+<span class="muted num" style="font-size: 13px; white-space: nowrap">41m</span>
+</article><article class="row" style="align-items: flex-start; ">
+<span style="display: flex; gap: 14px; min-width: 0"><span style="width: 40px; height: 40px; border-radius: 999px; background: #18150F; border: 1px solid #221E17; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00C805" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><h3 style="margin: 0; font-size: 15px; font-weight: 600">JUP buys</h3><span class="num" style="font-size: 14px; color: #D6D0C4">BUY 3.2 JUPy…vCN · 7xKX…9fQa</span><span class="muted" style="font-size: 12px">In inbox</span></span></span>
+<span class="muted num" style="font-size: 13px; white-space: nowrap">Yesterday</span>
+</article></section>
+<p class="muted" style="font-size: 12px; margin: 0">Alerts are sent only for finalized transactions in supported parser shapes. Both members see the same inbox.</p>
+</div>
+<aside aria-label="Your Telegram deliveries" style="display: flex; flex-direction: column; gap: 24px">
+<section style="border: 1px solid #221E17; border-radius: 16px; padding: 24px; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px"><div><h2 class="h2" style="font-size: 18px">Your Telegram</h2><span class="muted" style="font-size: 13px">Chat ••••4417 · verified</span></div><span class="pill p-ok">On</span></div>
+<div style="border: 1px solid #FFB01F; border-radius: 14px; padding: 16px; margin: 12px 0 4px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; gap: 12px"><span style="display: flex; flex-direction: column"><span style="font-weight: 600; font-size: 14px">Wallet sell · 1h</span><span class="muted" style="font-size: 12px">1 attempt · timed out after send</span></span><span class="pill p-warn">May have arrived</span></div>
+<p style="margin: 0; font-size: 13px; color: #E9E4DA; line-height: 1.45">This message may already be in Telegram. Check there first — retrying can send a duplicate.</p>
+<button class="btn2" style="min-height: 40px; font-size: 13px; border-color: #FFB01F; color: #FFB01F; align-self: flex-start">Retry anyway</button>
+</div>
+<div class="row"><span style="display: flex; flex-direction: column"><span style="font-weight: 600; font-size: 14px">Wallet buy · 2m</span><span class="muted" style="font-size: 12px">1 attempt</span></span><span style="display: flex; gap: 8px; align-items: center"><span class="pill p-ok">Sent</span></span></div><div class="row"><span style="display: flex; flex-direction: column"><span style="font-weight: 600; font-size: 14px">Wallet sell · 38m</span><span class="muted" style="font-size: 12px">1 attempt</span></span><span style="display: flex; gap: 8px; align-items: center"><span class="pill p-ok">Sent</span></span></div><div class="row"><span style="display: flex; flex-direction: column"><span style="font-weight: 600; font-size: 14px">JUP buys · Yesterday</span><span class="muted" style="font-size: 12px">3 attempts · chat not found</span></span><span style="display: flex; gap: 8px; align-items: center"><button class="btn2" style="min-height: 36px; font-size: 13px">Retry</button><span class="pill p-bad">Failed</span></span></div>
+</section>
+<a href="Setup.dc.html" class="btn2" style="align-self: flex-start">Manage destination</a>
+</aside>
+</main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1440, "height": 1040}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

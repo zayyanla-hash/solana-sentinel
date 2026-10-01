@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,10 @@ class MacReleaseTest(unittest.TestCase):
         self.module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.module)
         self.module.AGENTS = Path(self.temp.name) / "LaunchAgents"
+        # Each test owns a separate database port, including on an installed host.
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            self.module.PORT_DB = probe.getsockname()[1]
 
     def tearDown(self):
         data = Path(self.temp.name) / "postgres"
@@ -45,7 +50,7 @@ class MacReleaseTest(unittest.TestCase):
         self.assertFalse(mac.ready())
         subprocess.run([str(PG_BIN / "pg_ctl"), "-D", str(mac.BASE / "postgres"),
                         "-l", str(mac.BASE / "logs/test-postgres.log"),
-                        "-o", "-h 127.0.0.1 -p 55433 -c unix_socket_directories=''", "-w", "start"],
+                        "-o", f"-h 127.0.0.1 -p {mac.PORT_DB} -c unix_socket_directories=''", "-w", "start"],
                        check=True, stdout=subprocess.DEVNULL)
         mac.psql("create table if not exists backup_probe (id integer primary key, value text)",
                  db="sentinel_live", admin=False)

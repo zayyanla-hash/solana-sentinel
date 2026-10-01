@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { classify } from "./chart";
+import { classify } from "./chart-data";
 import { groupByDay } from "./derive";
 import { formatClock, formatQty, shortAddress } from "./format";
 import { Icon, type IconName } from "./icons";

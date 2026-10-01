@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { sortNewestFirst } from "./chart";
+import { sortNewestFirst } from "./chart-data";
 import type { ActivityResponse, Observation } from "./types";
 import { messageOf } from "./useTeamWorkspace";
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
@@ -28,6 +28,8 @@ export async function generateMetadata(): Promise<Metadata> { return process.env
   description:
     "Paper-only Solana research and paper-trading terminal. Deterministic risk, historical signals, provenance, no live broadcast.",
 }; }
+
+export const viewport: Viewport = { themeColor: "#0c1117", colorScheme: "dark" };
 
 export default function RootLayout({
   children,

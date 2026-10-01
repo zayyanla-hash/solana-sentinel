@@ -42,9 +42,9 @@ function chronoOk(trades: WalletTrade[]): boolean {
   return true;
 }
 
-export async function verifyLiveWallet(address: string): Promise<WalletVerificationReport> {
+export async function verifyLiveWallet(address: string, options: { signal?: AbortSignal } = {}): Promise<WalletVerificationReport> {
   const provider = createLiveWalletHistoryProvider();
-  const history = await provider.getTrades(address).finally(() => provider.close?.());
+  const history = await provider.getTrades(address, options).finally(() => provider.close?.());
   const { trades, duplicates } = dedupeTrades(history.trades);
   const sorted = [...trades].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const quality = walletQualityReport(sorted, duplicates);

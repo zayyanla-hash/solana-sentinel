@@ -53,5 +53,5 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 
 main().finally(cleanup).catch((err) => {
   console.error(err);
-  process.exitCode = 1;
+  process.exitCode ??= 1;
 });

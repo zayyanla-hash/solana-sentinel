@@ -29,6 +29,7 @@ process.once("SIGINT", () => { void stop().catch(() => { process.exitCode = 1; }
 async function main() {
   const result = await provider.getTrades(W);
   process.send?.({ phase: "committed", trades: result.trades.length });
+  if (mode === "forced-exit") process.exit(0);
   if (mode === "seed") keepalive = setInterval(() => undefined, 1000);
   else await stop();
 }

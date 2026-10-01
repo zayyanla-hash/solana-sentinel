@@ -27,6 +27,12 @@ afterEach(async () => {
   await Promise.all(dirs.splice(0).map((dir) => rm(dir, { force: true, recursive: true })));
 });
 describe("actual child-process history restart boundaries", () => {
+  it("host process.exit releases writer ownership without deleting its committed snapshot", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sentinel-process-")); dirs.push(dir);
+    const first = launch(dir, "forced-exit"); await message(first); await exited(first);
+    const next = launch(dir, "replay"); expect((await message(next)).trades).toBe(1);
+    await exited(next); expect(next.exitCode).toBe(0);
+  });
   it("SIGTERM closes the writer, and a new process replays without duplicated records", async () => {
     const dir = await mkdtemp(join(tmpdir(), "sentinel-process-")); dirs.push(dir);
     const seed = launch(dir, "seed");

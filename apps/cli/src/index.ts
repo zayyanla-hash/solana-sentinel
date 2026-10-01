@@ -14,6 +14,7 @@ import {
 } from "@sat/pipeline";
 import { getDatabase, closeDatabase } from "@sat/database";
 import { isLiveTradingAllowed } from "@sat/shared";
+const shutdown = new AbortController();
 
 function json(data: unknown): void {
   process.stdout.write(`${JSON.stringify(data, null, 2)}\n`);
@@ -58,7 +59,7 @@ async function main(): Promise<void> {
     case "analyze-wallet": {
       if (!arg) throw new Error("wallet required");
       if (flags.has("--live")) {
-        json(await verifyLiveWallet(arg));
+        json(await verifyLiveWallet(arg, { signal: shutdown.signal }));
         return;
       }
       json({ score: await analyzeWallet(arg, db) });
@@ -100,6 +101,7 @@ async function cleanup() {
 }
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
+    shutdown.abort();
     process.exitCode = signal === "SIGINT" ? 130 : 143;
     void closeProviders().catch(() => { process.exitCode = 1; });
   });
@@ -107,5 +109,5 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 
 main().finally(cleanup).catch((err) => {
   json({ error: err instanceof Error ? err.message : String(err) });
-  process.exitCode = 1;
+  if (!shutdown.signal.aborted) process.exitCode = 1;
 });

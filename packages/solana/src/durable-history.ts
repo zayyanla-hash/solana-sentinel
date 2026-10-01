@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open, rename, unlink } from "node:fs/promises";
+import { unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { SolanaAddressSchema, WalletTradeSchema } from "@sat/shared";
@@ -72,6 +73,14 @@ export class DurableWalletHistoryProvider implements WalletHistoryProvider {
   private closeTask: Promise<void> | null = null;
   private activeWallets = new Set<string>();
   private reservedWallets = new Set<string>();
+  // Some hosts (including Next's server) call process.exit during SIGTERM.
+  // Only release writer ownership here; an unfinished temp file is unpublished.
+  private readonly onExit = () => {
+    if (this.lockOwned) {
+      try { unlinkSync(join(this.directory, ".writer.lock")); } catch { /* Exit cannot await recovery; an orphan lock fails closed. */ }
+      this.lockOwned = false;
+    }
+  };
 
   constructor(private readonly upstream: WalletHistoryProvider, directory: string, private readonly options: DurableHistoryOptions = {}) {
     this.name = `durable-${upstream.name}`;
@@ -91,6 +100,7 @@ export class DurableWalletHistoryProvider implements WalletHistoryProvider {
     await mkdir(this.directory, { recursive: true, mode: 0o700 });
     const lock = await open(join(this.directory, ".writer.lock"), "wx", 0o600).catch(() => { throw new HistoryStoreError("history-store-locked"); });
     this.lockOwned = true;
+    process.once("exit", this.onExit);
     try {
       await lock.writeFile(JSON.stringify({ pid: process.pid }));
       await lock.sync();
@@ -240,7 +250,11 @@ export class DurableWalletHistoryProvider implements WalletHistoryProvider {
   }
 
   private async releaseLock(): Promise<void> {
-    if (this.lockOwned) { await unlink(join(this.directory, ".writer.lock")); this.lockOwned = false; }
+    if (this.lockOwned) {
+      await unlink(join(this.directory, ".writer.lock"));
+      this.lockOwned = false;
+      process.removeListener("exit", this.onExit);
+    }
   }
 
   close(): Promise<void> {

@@ -13,7 +13,7 @@ pnpm build
 
 The isolated cluster listens on `127.0.0.1:55432`. The application uses the non-superuser `sentinel_stage_app` role and the `sentinel_stage` database. Tests use the separate, disposable `sentinel_test` database. Passwords and operator tokens are generated locally in ignored files with restricted permissions. Do not copy those files into fixtures, reports, or Git.
 
-Edit `.env.staging.local`: set `SENTINEL_MONITOR_WALLETS` to comma-separated public wallet addresses, or leave it empty and add wallets to the dashboard watchlist before starting the worker. Addresses are loaded at worker startup; restart it after changing the watchlist. The current local example uses a public transaction sample wallet; it is not identified as the operator's wallet.
+Edit `.env.staging.local`: set `SENTINEL_MONITOR_WALLETS` to comma-separated public wallet addresses, or leave it empty and add wallets to the dashboard watchlist before starting the worker. The worker refreshes the shared watchlist on every cycle; environment-specified addresses remain a fixed override. The current local example uses a public transaction sample wallet; it is not identified as the operator's wallet.
 
 Start these in separate terminals:
 
@@ -47,9 +47,9 @@ The journal stores raw finalized transactions, including failed and unknown obse
 
 Journal-derived wallet observations have no verified price or cost basis. Scoring reports insufficient evidence rather than inventing profit or historical prices. Signal and backtest paths require dated same-mint evidence and reject unavailable live history.
 
-Create tracked-wallet buy/sell rules in the Alerts tab. Classified live trades enqueue alert work in the same transaction as their facts and checkpoint. The worker persists a deterministic event per trade/rule before acknowledging that work. Rules created after a historical transaction do not create retrospective notifications. Cooldowns and inbox facts survive restart. The internal inbox is the supported delivery channel; external channels never report delivery without an implementation.
+Create tracked-wallet buy/sell rules in the Alerts tab. Classified live trades enqueue alert work in the same transaction as their facts and checkpoint. The worker persists a deterministic event per trade/rule before acknowledging that work. Rules created after a historical transaction do not create retrospective notifications. Cooldowns and inbox facts survive restart. The staging inbox persists internal alerts. The shared Mac release adds verified per-member Telegram delivery; see [Shared Mac release](SHARED_MAC.md).
 
-Raw observations and pending alert intents have explicit capacity limits. Durable alert facts have a 100,000-row limit; the visible inbox holds 500 entries. At capacity, processing fails closed and requires an operator retention/archive plan. Do not delete idempotency facts while their work can still replay.
+Raw observations and pending alert intents have explicit capacity limits. The hot alert fact table has a 100,000-row limit; the visible inbox holds 500 entries. The shared worker archives old acknowledged observations and alert facts while preserving replay identities, raw evidence and queued deliveries. Storage still grows in cold archives; monitor disk space and keep verified off-host backups. At capacity, processing fails closed.
 
 ## Backup and restore
 

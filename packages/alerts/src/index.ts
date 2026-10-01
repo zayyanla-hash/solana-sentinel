@@ -269,3 +269,6 @@ export function createDefaultAlertEngine(): AlertEngine {
     new StubExternalAlertProvider("WEB_PUSH"),
   ]);
 }
+
+export { TelegramClient, formatTelegramAlert } from "./telegram";
+export type { TelegramSendResult } from "./telegram";

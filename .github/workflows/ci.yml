@@ -78,3 +78,13 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Playwright critical flow
         run: pnpm exec playwright test
+
+  mac-release:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL 17
+        run: brew install postgresql@17
+      - name: Verify Mac database and backup tooling
+        run: PYTHONDONTWRITEBYTECODE=1 SENTINEL_PG_BIN="$(brew --prefix postgresql@17)/bin" python3 -m unittest tests/test_mac_release.py -v

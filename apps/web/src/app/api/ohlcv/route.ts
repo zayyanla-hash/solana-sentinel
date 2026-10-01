@@ -1,3 +1,4 @@
+import { authenticateTeamRequest } from "@/lib/request-guard";
 import { NextResponse } from "next/server";
 import { createMarketDataProvider } from "@sat/market-data";
 import { type OhlcvInterval } from "@sat/shared";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 const VALID_INTERVALS: OhlcvInterval[] = ["1m", "5m", "15m", "1h", "4h"];
 
 export async function GET(req: Request) {
+  await authenticateTeamRequest(req);
   const denied = productionAuthDenied(req);
   if (denied) return NextResponse.json({ error: denied.error, code: denied.code }, { status: denied.status });
   const { searchParams } = new URL(req.url);

@@ -1,3 +1,4 @@
+import { authenticateTeamRequest, teamMode } from "@/lib/request-guard";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -48,7 +49,9 @@ export function apiOk(data: unknown, rid: string, extra?: Record<string, unknown
 }
 
 export async function handleV1(req: Request, path: string[]): Promise<NextResponse> {
+  await authenticateTeamRequest(req);
   const rid = requestId();
+  if (teamMode() && req.method !== "GET") return apiError("Use the shared dashboard for changes", "TEAM_MUTATION_REQUIRED", 403, rid);
   const [a, b, c] = path;
   const authDenied = productionAuthDenied(req);
   if (authDenied && !(a === "health" && !b)) {

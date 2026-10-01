@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-01T05:42:01.230247+00:00",
+  "labelStatus": "SOURCE_TRANSACTION_REVIEW",
+  "scope": "Five new finalized BUY transactions from one wallet and the same Jupiter-to-Pump BuyExactQuoteInV2 route; parser abstains on all five",
+  "sourceArtifact": "mainnet-wallet-unreviewed.json",
+  "directionalLabels": 5,
+  "correctDirectionalPredictions": 0,
+  "accuracy": null,
+  "caveat": "Narrow wallet/route selection. These five BUY labels measure a current coverage gap, not false positives or overall accuracy.",
+  "labels": [
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 1,
+      "signature": "2t5xxgdLZR93Cq7brDSK961Wm5HJ592WRoWrvsmxkKs3znysEbv2kzQCwJYLiaYvkVya3d5FMUpkmWfXCdgVJ6EK",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "HMjK2dcF8NdCB8SDfSjBcHHBEAut97XfPVaNLdfKpump",
+        "qty": 48537.487223
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[5]",
+        "raw.transaction.message.instructions[SystemProgram transfer]",
+        "raw.meta.innerInstructions[index=5].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=5]",
+        "raw.meta.logMessages[Pump BuyExactQuoteInV2]",
+        "raw.transaction.message.instructions[last].parsed.info"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/2t5xxgdLZR93Cq7brDSK961Wm5HJ592WRoWrvsmxkKs3znysEbv2kzQCwJYLiaYvkVya3d5FMUpkmWfXCdgVJ6EK",
+      "reason": "Successful finalized Jupiter route invokes Pump BuyExactQuoteInV2; wallet funds temporary WSOL, pool transferChecked credits the wallet-owned destination with the exact token balance increase, and the temporary account closes back to the wallet.",
+      "predictionOutcome": "UNKNOWN"
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 4,
+      "signature": "3kfvL7m47choSsVN1k5Kkgf3PBkqWitdTnF28H19DidKphic424jHa1C167fTnojMvUN4g9rExuDqfzVUx13FQAt",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "3X5xoV6n5tpLf61o5cQndRCHcbL7ZFdEDvCpWpr5pump",
+        "qty": 30684.158815
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[6]",
+        "raw.transaction.message.instructions[SystemProgram transfer]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=9]",
+        "raw.meta.logMessages[Pump BuyExactQuoteInV2]",
+        "raw.transaction.message.instructions[last].parsed.info"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/3kfvL7m47choSsVN1k5Kkgf3PBkqWitdTnF28H19DidKphic424jHa1C167fTnojMvUN4g9rExuDqfzVUx13FQAt",
+      "reason": "Successful finalized Jupiter route invokes Pump BuyExactQuoteInV2; wallet funds temporary WSOL, pool transferChecked credits the wallet-owned destination with the exact token balance increase, and the temporary account closes back to the wallet.",
+      "predictionOutcome": "UNKNOWN"
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 6,
+      "signature": "q9XaB5KKtTjHeRQaR5wePh1Jtd1Ph8rddFo8HbYng86YNjzVzkeCnpyGeknAJv9kBYdvckEhg77RUPVnFFnhSb7",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "8ZS6gkb9XpGVNYdMYECLVr1kgApJVpWvvrUw45tQpump",
+        "qty": 605855.32963
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[6]",
+        "raw.transaction.message.instructions[SystemProgram transfer]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=4]",
+        "raw.meta.logMessages[Pump BuyExactQuoteInV2]",
+        "raw.transaction.message.instructions[last].parsed.info"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/q9XaB5KKtTjHeRQaR5wePh1Jtd1Ph8rddFo8HbYng86YNjzVzkeCnpyGeknAJv9kBYdvckEhg77RUPVnFFnhSb7",
+      "reason": "Successful finalized Jupiter route invokes Pump BuyExactQuoteInV2; wallet funds temporary WSOL, pool transferChecked credits the wallet-owned destination with the exact token balance increase, and the temporary account closes back to the wallet.",
+      "predictionOutcome": "UNKNOWN"
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 9,
+      "signature": "3qRNvtCiB7A8G6ZdSLFD4CRZ1ixQYbTp7KFf9x8HLtNvDwu7LYpzZvYeeP81LGMSoE8sggZc1jaGZLXMuZF1HMJR",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "51wRtAb9S8U5cyjcdbkjLTcs9WAKw7717zY56Yxjpump",
+        "qty": 29100.788619
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[5]",
+        "raw.transaction.message.instructions[SystemProgram transfer]",
+        "raw.meta.innerInstructions[index=5].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=5]",
+        "raw.meta.logMessages[Pump BuyExactQuoteInV2]",
+        "raw.transaction.message.instructions[last].parsed.info"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/3qRNvtCiB7A8G6ZdSLFD4CRZ1ixQYbTp7KFf9x8HLtNvDwu7LYpzZvYeeP81LGMSoE8sggZc1jaGZLXMuZF1HMJR",
+      "reason": "Successful finalized Jupiter route invokes Pump BuyExactQuoteInV2; wallet funds temporary WSOL, pool transferChecked credits the wallet-owned destination with the exact token balance increase, and the temporary account closes back to the wallet.",
+      "predictionOutcome": "UNKNOWN"
+    },
+    {
+      "sourceArtifact": "mainnet-wallet-unreviewed.json",
+      "sourceIndex": 12,
+      "signature": "NDvYdbJCr7DPqb8WoTkreoMuZSHjQyXepcbHGLHdafWknPsTiyDjSknnPUZTxtyBSoa2DfyU5dXXd3GwGtpicd1",
+      "wallet": "GgqamBEj5Cmi25zBi4qoF8UvakiR71HHaY4LHkhU3FrP",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "8jFfVbGyGDhFQDhUJnHtygfNaahoRJRv2nKnkHhFpump",
+        "qty": 39962.785238
+      },
+      "evidencePaths": [
+        "raw.meta.err",
+        "raw.transaction.message.instructions[6]",
+        "raw.transaction.message.instructions[SystemProgram transfer]",
+        "raw.meta.innerInstructions[index=6].instructions[3].parsed.info",
+        "raw.meta.postTokenBalances[accountIndex=5]",
+        "raw.meta.logMessages[Pump BuyExactQuoteInV2]",
+        "raw.transaction.message.instructions[last].parsed.info"
+      ],
+      "sourceUrl": "https://explorer.solana.com/tx/NDvYdbJCr7DPqb8WoTkreoMuZSHjQyXepcbHGLHdafWknPsTiyDjSknnPUZTxtyBSoa2DfyU5dXXd3GwGtpicd1",
+      "reason": "Successful finalized Jupiter route invokes Pump BuyExactQuoteInV2; wallet funds temporary WSOL, pool transferChecked credits the wallet-owned destination with the exact token balance increase, and the temporary account closes back to the wallet.",
+      "predictionOutcome": "UNKNOWN"
+    }
+  ]
+}

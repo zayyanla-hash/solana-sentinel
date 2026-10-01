@@ -110,6 +110,13 @@ create table if not exists sat_alert_event_facts (
   payload jsonb not null
 );
 
+-- Cold facts keep permanent replay keys and the exact event payload in compressed form.
+create table if not exists sat_alert_event_archive (
+  id uuid primary key,
+  payload bytea not null,
+  archived_at timestamptz not null default now()
+);
+
 create table if not exists sat_schema_version (
   id int primary key default 1 check (id = 1),
   version int not null
@@ -137,5 +144,6 @@ alter table sat_equity enable row level security;
 alter table sat_meta enable row level security;
 alter table sat_alert_cooldowns enable row level security;
 alter table sat_alert_event_facts enable row level security;
+alter table sat_alert_event_archive enable row level security;
 alter table sat_schema_version enable row level security;
 `;

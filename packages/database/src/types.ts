@@ -129,6 +129,8 @@ export interface Database {
   upsertWalletScore(score: WalletCredibilityScore): Promise<void>;
   setSentinelSignals(signals: SentinelSignal[]): Promise<void>;
   addAlertRule(rule: AlertRule): Promise<void>;
+  updateAlertRule(id: string, patch: Partial<Pick<AlertRule, "name" | "enabled" | "wallet" | "mint" | "cooldownMinutes">>): Promise<void>;
+  deleteAlertRule(id: string): Promise<void>;
   addAlertEvents(events: AlertEvent[]): Promise<void>;
   recordAlertEvent(event: AlertEvent, cooldown?: AlertCooldown): Promise<AlertEvent>;
   addBacktest(result: BacktestResult): Promise<void>;

@@ -189,8 +189,18 @@ export class InMemoryDatabase implements Database {
   }
   async addAlertRule(rule: AlertRule) {
     await this.enqueue(() => {
+      if (this.state.alertRules.length >= 100 && !this.state.alertRules.some((r) => r.id === rule.id)) throw new Error("ALERT_RULE_LIMIT");
       this.state.alertRules = [structuredClone(rule), ...this.state.alertRules.filter((r) => r.id !== rule.id)].slice(0, 100);
     });
+  }
+  async updateAlertRule(id: string, patch: Partial<Pick<AlertRule, "name" | "enabled" | "wallet" | "mint" | "cooldownMinutes">>): Promise<void> {
+    await this.enqueue(() => {
+      if (!this.state.alertRules.some((r) => r.id === id)) throw new Error("RULE_NOT_FOUND");
+      this.state.alertRules = this.state.alertRules.map((r) => r.id === id ? { ...r, ...patch } : r);
+    });
+  }
+  async deleteAlertRule(id: string): Promise<void> {
+    await this.enqueue(() => { this.state.alertRules = this.state.alertRules.filter((r) => r.id !== id); });
   }
   async addAlertEvents(events: AlertEvent[]): Promise<void> {
     await this.enqueue(() => {
@@ -310,3 +320,8 @@ export { AlreadyExecutedError, StalePortfolioError };
 export { STORE_SCHEMA_SQL, STORE_SCHEMA_VERSION } from "./schema-sql";
 export { PostgresIngestionStore, IngestionStoreError, INGESTION_SCHEMA_SQL } from "./ingestion";
 export type { IngestionCheckpoint, ChainObservation, IngestionStats, PendingTradeAlert } from "./ingestion";
+export { PostgresDeliveryStore, DELIVERY_SCHEMA_SQL } from "./delivery";
+export type { TelegramDelivery, TelegramDestination, ClaimedTelegramDelivery, TelegramSendResult as DeliverySendResult } from "./delivery";
+
+export { PostgresTeamStore, getTeamStore, TEAM_SCHEMA_SQL } from "./team";
+export type { TeamMember } from "./team";

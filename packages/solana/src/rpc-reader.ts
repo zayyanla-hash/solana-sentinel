@@ -260,6 +260,169 @@ function isolatedPumpSellToClosedWsol(
   const qty = Number(spent) / 10 ** sourcePre.uiTokenAmount.decimals;
   return qty > 0 && Number.isFinite(qty) ? { mint: sourcePre.mint, qty } : null;
 }
+
+/** The observed Jupiter route funds a temporary WSOL ATA, buys one Pump base
+ * token, and closes WSOL to the same wallet. The official Pump IDL fixes the
+ * discriminator and 27 account roles; the observed serialized instruction has
+ * one trailing 0x01 byte after its two u64 arguments, so other shapes abstain.
+ * https://github.com/pump-fun/pump-public-docs/blob/main/idl/pump.json */
+function isolatedPumpBuyFromClosedWsol(
+  tx: z.infer<typeof TransactionSchema>, wallet: string,
+): { mint: string; qty: number } | null {
+  const keys = tx.transaction.message.accountKeys;
+  if (keys[0]?.pubkey !== wallet || !keys[0].signer) return null;
+  const significant = tx.transaction.message.instructions.map((ix, index) => ({ ix, index }))
+    .filter(({ ix }) => ix.programId !== COMPUTE && ix.programId !== MEMO);
+  if (significant.length !== 6 || [ATA, SYSTEM, TOKEN, ATA, JUPITER, TOKEN]
+    .some((program, index) => significant[index]!.ix.programId !== program)) return null;
+  const { ix: wrapCreate, index: wrapIndex } = significant[0]!;
+  const { ix: fund } = significant[1]!;
+  const { ix: sync } = significant[2]!;
+  const { ix: baseCreate, index: baseIndex } = significant[3]!;
+  const { ix: route, index: routeIndex } = significant[4]!;
+  const { ix: close } = significant[5]!;
+  if (!Array.isArray(route.accounts) || route.accounts[1] !== wallet || route.accounts[0] !== TOKEN_2022 ||
+    typeof route.accounts[2] !== "string" || typeof route.accounts[3] !== "string" || typeof route.data !== "string") return null;
+  let routeId: string;
+  try { routeId = Buffer.from(decodeBase58(route.data).subarray(0, 8)).toString("hex"); } catch { return null; }
+  if (routeId !== createHash("sha256").update("global:route").digest("hex").slice(0, 16)) return null;
+  const wrapped = route.accounts[2] as string;
+  const baseAccount = route.accounts[3] as string;
+  if (wrapped === baseAccount || wrapped === wallet || baseAccount === wallet) return null;
+  const wrapInfo = z.object({ account: z.literal(wrapped), mint: z.literal(WSOL), source: z.literal(wallet),
+    wallet: z.literal(wallet), tokenProgram: z.literal(TOKEN) })
+    .safeParse((wrapCreate.parsed as { info?: unknown } | undefined)?.info);
+  const fundInfo = z.object({ source: z.literal(wallet), destination: z.literal(wrapped),
+    lamports: z.number().int().positive().safe() }).safeParse((fund.parsed as { info?: unknown } | undefined)?.info);
+  const syncInfo = z.object({ account: z.literal(wrapped) }).safeParse((sync.parsed as { info?: unknown } | undefined)?.info);
+  const closeInfo = z.object({ account: z.literal(wrapped), destination: z.literal(wallet), owner: z.literal(wallet) })
+    .safeParse((close.parsed as { info?: unknown } | undefined)?.info);
+  if ((wrapCreate.parsed as { type?: unknown } | undefined)?.type !== "createIdempotent" || !wrapInfo.success ||
+    (fund.parsed as { type?: unknown } | undefined)?.type !== "transfer" || !fundInfo.success ||
+    (sync.parsed as { type?: unknown } | undefined)?.type !== "syncNative" || !syncInfo.success ||
+    (baseCreate.parsed as { type?: unknown } | undefined)?.type !== "createIdempotent" ||
+    (close.parsed as { type?: unknown } | undefined)?.type !== "closeAccount" || !closeInfo.success) return null;
+
+  const groups = z.array(z.object({ index: z.number().int().nonnegative(), instructions: z.array(z.record(z.unknown())) }))
+    .safeParse(tx.meta.innerInstructions);
+  if (!groups.success || groups.data.length !== 3) return null;
+  const wrapGroup = groups.data.find((group) => group.index === wrapIndex);
+  const baseGroup = groups.data.find((group) => group.index === baseIndex);
+  const routeGroup = groups.data.find((group) => group.index === routeIndex);
+  if (!wrapGroup || !baseGroup || !routeGroup) return null;
+  const rentFor = (group: typeof wrapGroup, account: string, program: string, mint: string): number | null => {
+    let rent = 0, initialized = false;
+    for (const inner of group.instructions) {
+      const type = (inner.parsed as { type?: unknown } | undefined)?.type;
+      const info = (inner.parsed as { info?: unknown } | undefined)?.info;
+      if (inner.programId === SYSTEM && type === "createAccount") {
+        const parsed = z.object({ newAccount: z.literal(account), source: z.literal(wallet), owner: z.literal(program),
+          lamports: z.number().int().positive().safe() }).safeParse(info);
+        if (!parsed.success || rent) return null;
+        rent = parsed.data.lamports;
+      } else if (inner.programId === program && type === "initializeAccount3") {
+        const parsed = z.object({ account: z.literal(account), mint: z.literal(mint), owner: z.literal(wallet) }).safeParse(info);
+        if (!parsed.success || initialized) return null;
+        initialized = true;
+      } else if (inner.programId !== program || !["getAccountDataSize", "initializeImmutableOwner"].includes(String(type))) return null;
+    }
+    return rent && initialized ? rent : null;
+  };
+  const wrapRent = rentFor(wrapGroup, wrapped, TOKEN, WSOL);
+  const baseInfo = z.object({ account: z.literal(baseAccount), mint: SolanaAddressSchema,
+    source: z.literal(wallet), wallet: z.literal(wallet), tokenProgram: z.literal(TOKEN_2022) })
+    .safeParse((baseCreate.parsed as { info?: unknown } | undefined)?.info);
+  if (!wrapRent || !baseInfo.success || isQuoteMint(baseInfo.data.mint)) return null;
+  const mint = baseInfo.data.mint;
+  const baseRent = rentFor(baseGroup, baseAccount, TOKEN_2022, mint);
+  if (!baseRent) return null;
+  const wrapAccountIndex = keys.findIndex((key) => key.pubkey === wrapped);
+  const baseAccountIndex = keys.findIndex((key) => key.pubkey === baseAccount);
+  if (wrapAccountIndex < 0 || baseAccountIndex < 0 || tx.meta.preBalances[wrapAccountIndex] !== 0 ||
+    tx.meta.postBalances[wrapAccountIndex] !== 0 || tx.meta.preBalances[baseAccountIndex] !== 0 ||
+    tx.meta.postBalances[baseAccountIndex] !== baseRent) return null;
+
+  const pre = z.array(BalanceSchema).safeParse(tx.meta.preTokenBalances);
+  const post = z.array(BalanceSchema).safeParse(tx.meta.postTokenBalances);
+  if (!pre.success || !post.success) return null;
+  const preByIndex = new Map(pre.data.map((balance) => [balance.accountIndex, balance]));
+  const postByIndex = new Map(post.data.map((balance) => [balance.accountIndex, balance]));
+  if (preByIndex.size !== pre.data.length || postByIndex.size !== post.data.length ||
+    preByIndex.has(baseAccountIndex) || preByIndex.has(wrapAccountIndex) || postByIndex.has(wrapAccountIndex)) return null;
+  const received = postByIndex.get(baseAccountIndex);
+  if (!received || received.owner !== wallet || received.mint !== mint || received.programId !== TOKEN_2022 ||
+    received.uiTokenAmount.amount === "0") return null;
+  const amount = BigInt(received.uiTokenAmount.amount);
+  if (amount > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  for (const index of new Set([...preByIndex.keys(), ...postByIndex.keys()])) {
+    if (index === baseAccountIndex) continue;
+    const a = preByIndex.get(index), b = postByIndex.get(index);
+    if (a?.owner !== wallet && b?.owner !== wallet) continue;
+    if (!a || !b || a.owner !== wallet || b.owner !== wallet || a.mint !== b.mint ||
+      a.uiTokenAmount.decimals !== b.uiTokenAmount.decimals || a.uiTokenAmount.amount !== b.uiTokenAmount.amount) return null;
+  }
+  const logs = z.array(z.string()).safeParse(tx.meta.logMessages);
+  if (!logs.success || !logs.data.some((line, index) => line === `Program ${PUMP} invoke [2]` &&
+    logs.data[index + 1] === "Program log: Instruction: BuyExactQuoteInV2")) return null;
+  const pumpCalls = routeGroup.instructions.filter((inner) => inner.programId === PUMP && inner.stackHeight === 2);
+  if (pumpCalls.length !== 1 || routeGroup.instructions.length !== 10 ||
+    routeGroup.instructions[0]?.programId !== TOKEN || routeGroup.instructions[1] !== pumpCalls[0] ||
+    routeGroup.instructions[2]?.programId !== PUMP_FEES || routeGroup.instructions[3]?.programId !== TOKEN_2022 ||
+    routeGroup.instructions.slice(4, 8).some((inner) => inner.programId !== SYSTEM) ||
+    routeGroup.instructions[8]?.programId !== PUMP || routeGroup.instructions[9]?.programId !== JUPITER) return null;
+  const pump = pumpCalls[0]!;
+  if (typeof pump.data !== "string" || !Array.isArray(pump.accounts) || pump.accounts.length !== 27) return null;
+  let data: Buffer;
+  try { data = Buffer.from(decodeBase58(pump.data)); } catch { return null; }
+  if (data.length !== 25 || data.subarray(0, 8).toString("hex") !== "c2ab1c46684d5b2f" ||
+    data[24] !== 1 || data.readBigUInt64LE(8) !== BigInt(fundInfo.data.lamports) ||
+    data.readBigUInt64LE(16) > amount ||
+    pump.accounts[1] !== mint || pump.accounts[2] !== WSOL || pump.accounts[3] !== TOKEN_2022 ||
+    pump.accounts[4] !== TOKEN || pump.accounts[5] !== ATA || pump.accounts[13] !== wallet ||
+    pump.accounts[14] !== baseAccount || pump.accounts[15] !== wrapped || pump.accounts[23] !== PUMP_FEES ||
+    pump.accounts[24] !== SYSTEM || pump.accounts[26] !== PUMP) return null;
+
+  let unwrap = false, transfer = false, feeProgram = 0, jupiter = 0, event = 0, paid = 0n;
+  for (const inner of routeGroup.instructions) {
+    const type = (inner.parsed as { type?: unknown } | undefined)?.type;
+    const info = (inner.parsed as { info?: unknown } | undefined)?.info;
+    if (inner === pump) continue;
+    if (inner.programId === PUMP && inner.stackHeight === 3) {
+      if (event++ || typeof inner.data !== "string" || !Array.isArray(inner.accounts) ||
+        inner.accounts.length !== 1 || inner.accounts[0] !== pump.accounts[25]) return null;
+      try { if (Buffer.from(decodeBase58(inner.data).subarray(0, 8)).toString("hex") !== "e445a52e51cb9a1d") return null; }
+      catch { return null; }
+    } else if (inner.programId === TOKEN && type === "unwrapLamports") {
+      const parsed = z.object({ amount: z.string().regex(/^\d+$/), authority: z.literal(wallet),
+        source: z.literal(wrapped), destination: z.literal(wallet) }).safeParse(info);
+      if (!parsed.success || unwrap || BigInt(parsed.data.amount) !== BigInt(fundInfo.data.lamports)) return null;
+      unwrap = true;
+    } else if (inner.programId === TOKEN_2022 && type === "transferChecked") {
+      const parsed = z.object({ destination: z.literal(baseAccount), mint: z.literal(mint),
+        source: z.literal(pump.accounts[11]), tokenAmount: z.object({ amount: z.string().regex(/^\d+$/),
+          decimals: z.number().int() }) }).safeParse(info);
+      if (!parsed.success || transfer || BigInt(parsed.data.tokenAmount.amount) !== amount ||
+        parsed.data.tokenAmount.decimals !== received.uiTokenAmount.decimals) return null;
+      transfer = true;
+    } else if (inner.programId === SYSTEM && type === "transfer") {
+      const parsed = z.object({ source: z.literal(wallet), destination: SolanaAddressSchema,
+        lamports: z.number().int().positive().safe() }).safeParse(info);
+      if (!parsed.success || !pump.accounts.includes(parsed.data.destination) ||
+        [wallet, wrapped, baseAccount].includes(parsed.data.destination)) return null;
+      paid += BigInt(parsed.data.lamports);
+    } else if (inner.programId === PUMP_FEES && inner.stackHeight === 3 && type == null) feeProgram++;
+    else if (inner.programId === JUPITER && inner.stackHeight === 2 && type == null) jupiter++;
+    else return null;
+  }
+  if (!unwrap || !transfer || feeProgram !== 1 || jupiter !== 1 || event !== 1 ||
+    paid !== BigInt(fundInfo.data.lamports)) return null;
+  const deltas = keys.map((_, index) => BigInt(tx.meta.postBalances[index]!) - BigInt(tx.meta.preBalances[index]!));
+  const fee = BigInt(tx.meta.fee);
+  if (deltas.reduce((sum, delta) => sum + delta, 0n) !== -fee ||
+    deltas[0] !== -(BigInt(fundInfo.data.lamports) + BigInt(baseRent) + fee)) return null;
+  const qty = Number(amount) / 10 ** received.uiTokenAmount.decimals;
+  return qty > 0 && Number.isFinite(qty) ? { mint, qty } : null;
+}
 /** Conservative initial interpreter: direct SOL transfers and isolated Jupiter token-to-token routes.
  * Native rent, wrapping, closure, other protocols and combined actions deliberately abstain. */
 export function interpretRpcTransaction(sig: string, wallet: string, raw: unknown): RpcInterpretation {
@@ -301,6 +464,8 @@ export function interpretRpcTransaction(sig: string, wallet: string, raw: unknow
   }
   const pumpSell = isolatedPumpSellToClosedWsol(tx, wallet);
   if (pumpSell) return { ...base, outcome: "CLASSIFIED", reason: "jupiter-pump-sell-closed-wsol", trades: [trade(pumpSell.mint, "SELL", pumpSell.qty)] };
+  const pumpBuy = isolatedPumpBuyFromClosedWsol(tx, wallet);
+  if (pumpBuy) return { ...base, outcome: "CLASSIFIED", reason: "jupiter-pump-buy-closed-wsol", trades: [trade(pumpBuy.mint, "BUY", pumpBuy.qty)] };
   if (relevant.length !== 1 || relevant[0]!.programId !== JUPITER || !keys[walletIndex]!.signer) return { ...base, outcome: "UNKNOWN", reason: "unsupported-or-combined-instructions" };
   const route = relevant[0]!;
   if (typeof route.data !== "string" || !Array.isArray(route.accounts) || !route.accounts.includes(wallet)) return { ...base, outcome: "UNKNOWN", reason: "unverified-route-authority" };

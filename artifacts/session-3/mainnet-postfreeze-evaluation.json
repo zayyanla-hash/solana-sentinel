@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "evaluatedAt": "2026-10-01T05:51:32.533Z",
+  "scope": "Unseen signatures from one public wallet after BUY parser freeze; labels derived from raw account/instruction/balance evidence before prediction evaluation",
+  "sourceArtifact": "mainnet-postfreeze-unreviewed.json",
+  "labelCounts": {
+    "BUY": 6,
+    "SELL": 5
+  },
+  "failedLabels": 1,
+  "unreviewedCount": 3,
+  "correctDirectional": 10,
+  "missedDirectional": 1,
+  "falseDirectional": 0,
+  "correctFailed": 1,
+  "routeScopedDirectionalAgreement": "10/11",
+  "accuracy": null,
+  "caveat": "One wallet and Jupiter-to-Pump route only. Three remaining transactions have no independent direction label; this does not establish general accuracy, transfer coverage, or reliability.",
+  "rows": [
+    {
+      "signature": "64649jgmxgEcoRCGfjpyDUKtLVFyfrHMY51w8sGbwA1KsWKq2g1RvVxhM4CRycfJ268fa8Zvvhw4V7ZGdrg2Cjjp",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "Daxa99DPHYb3FeTRRqpNSCJkBkpDAK8uyXC6dHqnpump",
+        "qty": 17471.897906
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-buy-closed-wsol",
+        "trades": [
+          {
+            "side": "BUY",
+            "mint": "Daxa99DPHYb3FeTRRqpNSCJkBkpDAK8uyXC6dHqnpump",
+            "qty": 17471.897906
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "5duNwrAQcmuqXDDTWZD9J1ERRBndXtMxzcg6o8FWRcwoz4Bb7ByGLJ8Z58RnuBqLStBdyYWFQmsPxHFDdR6pVFRu",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "GRriSXDvM85H3PmBLfnJuGYgSHJMEzE8VApMVR6upump",
+        "qty": 20526.202339
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-sell-closed-wsol",
+        "trades": [
+          {
+            "side": "SELL",
+            "mint": "GRriSXDvM85H3PmBLfnJuGYgSHJMEzE8VApMVR6upump",
+            "qty": 20526.202339
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "54KnWCVJjo5MWzhSfyfkaDUGt1rq4KQcE8UgmJG3awYEKqTo79ZFaGwcY8PaAWPMSptX5UR4wJLwZu4az5zVuMYn",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "GRriSXDvM85H3PmBLfnJuGYgSHJMEzE8VApMVR6upump",
+        "qty": 20526.202339
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-buy-closed-wsol",
+        "trades": [
+          {
+            "side": "BUY",
+            "mint": "GRriSXDvM85H3PmBLfnJuGYgSHJMEzE8VApMVR6upump",
+            "qty": 20526.202339
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "3ysAiszeCGwh7j11Eeihe9bJew8A25GU5p16QKMJXi1UZ12qa63dPRDtSrVArf9RUuo6UUqYpFANij3spGLwNiiu",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "DqnbDyc8dbhcVmg8qXjd2DEGRoaXwvrNrT7akoQWpump",
+        "qty": 23148.49083
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-sell-closed-wsol",
+        "trades": [
+          {
+            "side": "SELL",
+            "mint": "DqnbDyc8dbhcVmg8qXjd2DEGRoaXwvrNrT7akoQWpump",
+            "qty": 23148.49083
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "Ahz1DxnzvJiv1ovqv8TYVR88AcYvTwkntA8k5vetFFJLkS3ksobba81FudAy1NtYzEjxpDR71F5HxGf6EfGbHmC",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "DqnbDyc8dbhcVmg8qXjd2DEGRoaXwvrNrT7akoQWpump",
+        "qty": 23148.49083
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-buy-closed-wsol",
+        "trades": [
+          {
+            "side": "BUY",
+            "mint": "DqnbDyc8dbhcVmg8qXjd2DEGRoaXwvrNrT7akoQWpump",
+            "qty": 23148.49083
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "5xdVpymX9RkCmSoavQ6dX2UHmKEL7RG1tq7QRzqLNZMFBLqArWHzGqkuq5njwxwFkAYBgTtSxbysVTV5HbzeaG2R",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "J1unb95XNV4iEAJbJxK39BaPjMpfBMmr5vJr58rGpump",
+        "qty": 39305.36327
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-sell-closed-wsol",
+        "trades": [
+          {
+            "side": "SELL",
+            "mint": "J1unb95XNV4iEAJbJxK39BaPjMpfBMmr5vJr58rGpump",
+            "qty": 39305.36327
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "4xUDK6p4fHkxNkjovNwomNNiJ3PTF2KENWdH5ZJPXmdauvk5kwQ2f8vPuVDZxCysXm2dbHM8rusVaWVBR7g1xTJK",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "J1unb95XNV4iEAJbJxK39BaPjMpfBMmr5vJr58rGpump",
+        "qty": 39305.36327
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-buy-closed-wsol",
+        "trades": [
+          {
+            "side": "BUY",
+            "mint": "J1unb95XNV4iEAJbJxK39BaPjMpfBMmr5vJr58rGpump",
+            "qty": 39305.36327
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "2Y1wvZbxBf2QkAswYzdw6rHnZbbw8QoDKmCbWAToKnMUvMi3B1dfdMzCvCsWXF6ZSJDHH393eFZhHCMQmck4NJoS",
+      "expected": {
+        "outcome": "FAILED"
+      },
+      "predicted": {
+        "outcome": "FAILED",
+        "reason": "onchain-failed",
+        "trades": []
+      },
+      "matched": true
+    },
+    {
+      "signature": "5vysNGkfiMaf6tFh6xvmVTf9c2fKAtMGhF8gBR7nSCvVS3FvNzoN8CBLE2eqLUXjvnoKLrzNAcuLGkojscAzq32H",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "Azw9ZeMomtPXrtpzsHFP3DoPbzdkpCHgjdgkHvMypump",
+        "qty": 30679.61399
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-sell-closed-wsol",
+        "trades": [
+          {
+            "side": "SELL",
+            "mint": "Azw9ZeMomtPXrtpzsHFP3DoPbzdkpCHgjdgkHvMypump",
+            "qty": 30679.61399
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "4deaCeeHrYdKhZYPmhaP3WwZQUUb4muU9fk3QuPfusdVrCrRYvspEmoiGehFVkQ2PovRBrANQxukzTVtVw6eSNw4",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "Azw9ZeMomtPXrtpzsHFP3DoPbzdkpCHgjdgkHvMypump",
+        "qty": 30679.61399
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-buy-closed-wsol",
+        "trades": [
+          {
+            "side": "BUY",
+            "mint": "Azw9ZeMomtPXrtpzsHFP3DoPbzdkpCHgjdgkHvMypump",
+            "qty": 30679.61399
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "5V3KFXMDLyh6zixbEUVzoCxvcHxxnFxPb41aVreXZqhCk3PZKMemVkLHfMux2Lxce5fyWHSHYUAmEkgFJ2HKUxhb",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "SELL",
+        "mint": "FqiQ37s9JHuqERgTVBCiJGjjnNYWrzrmnkENgtRacNjr",
+        "qty": 31079.969881
+      },
+      "predicted": {
+        "outcome": "CLASSIFIED",
+        "reason": "jupiter-pump-sell-closed-wsol",
+        "trades": [
+          {
+            "side": "SELL",
+            "mint": "FqiQ37s9JHuqERgTVBCiJGjjnNYWrzrmnkENgtRacNjr",
+            "qty": 31079.969881
+          }
+        ]
+      },
+      "matched": true
+    },
+    {
+      "signature": "fFXrHTXfE9JvoWy1yEhbCvwqkwHC3aX9DcwHPJ5AiFeEW8xqjEpaPLjdVgpNtsbT25CQsFejVKYynJcVJDLkDHH",
+      "expected": {
+        "outcome": "CLASSIFIED",
+        "side": "BUY",
+        "mint": "FqiQ37s9JHuqERgTVBCiJGjjnNYWrzrmnkENgtRacNjr",
+        "qty": 31079.969881
+      },
+      "predicted": {
+        "outcome": "UNKNOWN",
+        "reason": "unsupported-or-combined-instructions",
+        "trades": []
+      },
+      "matched": false
+    }
+  ]
+}

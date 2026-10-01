@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { gzipSync, gunzipSync } from "node:zlib";
 import pg from "pg";
 import { SolanaAddressSchema, WalletTradeSchema, type WalletTrade } from "@sat/shared";
 import { buildPoolConfig } from "./postgres";
@@ -35,6 +36,15 @@ export interface IngestionStats {
   pendingAlerts: number;
   outcomes: Record<ChainObservation["outcome"], number>;
   coverage: Record<IngestionCheckpoint["coverage"], number>;
+  archivedObservations: number;
+  observationCapacityPercent: number;
+  outboxCapacityPercent: number;
+}
+
+export interface StoredObservation { wallet: string; signature: string; slot: number; raw: Record<string, unknown> }
+export interface InterpretationRevision {
+  wallet: string; signature: string; version: number; outcome: ChainObservation["outcome"];
+  reason: string; trades: WalletTrade[];
 }
 
 export interface PendingTradeAlert { wallet: string; signature: string; trade: WalletTrade }
@@ -55,7 +65,27 @@ create table if not exists sat_chain_observations (
   slot bigint not null,
   hash text not null,
   payload jsonb not null,
+  ingested_at timestamptz not null default now(),
   primary key (wallet, signature)
+);
+alter table sat_chain_observations add column if not exists ingested_at timestamptz not null default now();
+create table if not exists sat_chain_archive (
+  wallet text not null,
+  signature text not null,
+  slot bigint not null,
+  hash text not null,
+  payload_gzip bytea not null,
+  archived_at timestamptz not null default now(),
+  primary key (wallet, signature)
+);
+create index if not exists sat_chain_archive_wallet_slot_idx on sat_chain_archive (wallet, slot desc);
+create table if not exists sat_chain_interpretations (
+  wallet text not null,
+  signature text not null,
+  parser_version int not null check (parser_version > 0),
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  primary key (wallet, signature, parser_version)
 );
 create index if not exists sat_chain_observations_wallet_slot_idx on sat_chain_observations (wallet, slot desc);
 create table if not exists sat_chain_trades (
@@ -75,6 +105,8 @@ create table if not exists sat_trade_alert_outbox (
 create index if not exists sat_trade_alert_outbox_pending_idx on sat_trade_alert_outbox (created_at, wallet, signature);
 alter table sat_ingestion_wallets enable row level security;
 alter table sat_chain_observations enable row level security;
+alter table sat_chain_archive enable row level security;
+alter table sat_chain_interpretations enable row level security;
 alter table sat_chain_trades enable row level security;
 alter table sat_trade_alert_outbox enable row level security;
 `;
@@ -225,6 +257,27 @@ export class PostgresIngestionStore {
     await client.query("select pg_advisory_xact_lock(20260930, 3)");
   }
 
+  /** A session lock spans RPC reads, checkpoint writes, and alert dispatch. */
+  async withWalletOwner<T>(wallet: string, work: () => Promise<T>): Promise<{ owned: true; value: T } | { owned: false }> {
+    SolanaAddressSchema.parse(wallet);
+    await this.ensure();
+    const client = await this.pool.connect();
+    const lockId = createHash("sha256").update(`sentinel-monitor-owner:${wallet}`).digest().readBigInt64BE(0).toString();
+    let owned = false;
+    try {
+      const result = await client.query("select pg_try_advisory_lock($1::bigint) as owned", [lockId]);
+      owned = result.rows[0]?.owned === true;
+      if (!owned) return { owned: false };
+      return { owned: true, value: await work() };
+    } finally {
+      if (owned) {
+        try { await client.query("select pg_advisory_unlock($1::bigint)", [lockId]); }
+        catch { /* A disconnected session releases its lock at PostgreSQL. */ }
+      }
+      client.release();
+    }
+  }
+
   async getCheckpoint(wallet: string): Promise<IngestionCheckpoint> {
     SolanaAddressSchema.parse(wallet);
     await this.ensure();
@@ -269,10 +322,16 @@ export class PostgresIngestionStore {
       let duplicates = 0;
       for (const row of page) {
         const hash = digest(row);
-        const old = await client.query("select hash from sat_chain_observations where wallet = $1 and signature = $2", [wallet, row.signature]);
+        const old = await client.query(`select hash, payload, null::bytea as payload_gzip from sat_chain_observations where wallet = $1 and signature = $2
+          union all select hash, null::jsonb as payload, payload_gzip from sat_chain_archive where wallet = $1 and signature = $2`, [wallet, row.signature]);
         if (old.rowCount) {
-          if (old.rows[0]?.hash !== hash) throw new IngestionStoreError("INGESTION_OBSERVATION_CONFLICT");
+          const prior = (old.rows[0]?.payload ?? JSON.parse(gunzipSync(old.rows[0]?.payload_gzip as Buffer).toString("utf8"))) as ChainObservation;
+          // Parser revisions may change the derived classification, never the source facts.
+          if (canonical(prior.raw) !== canonical(row.raw) || prior.slot !== row.slot || prior.blockTime !== row.blockTime) {
+            throw new IngestionStoreError("INGESTION_OBSERVATION_CONFLICT");
+          }
           duplicates += 1;
+          continue;
         } else {
           if (count >= this.maxObservations) throw new IngestionStoreError("INGESTION_OBSERVATION_CAPACITY");
           await client.query(
@@ -322,6 +381,105 @@ export class PostgresIngestionStore {
     return rows.rows.reverse().map((row) => WalletTradeSchema.parse(row.payload));
   }
 
+  /** Raw observations remain immutable; a parser upgrade writes a separate revision. */
+  async recordInterpretation(revision: InterpretationRevision): Promise<"inserted" | "duplicate"> {
+    SolanaAddressSchema.parse(revision.wallet);
+    if (!validSignature(revision.signature) || !Number.isSafeInteger(revision.version) || revision.version < 1 ||
+      !["CLASSIFIED", "UNKNOWN", "FAILED"].includes(revision.outcome) ||
+      typeof revision.reason !== "string" || revision.reason.length > 512) throw new IngestionStoreError("INGESTION_INVALID_INTERPRETATION");
+    const trades = revision.trades.map((trade) => {
+      const parsed = WalletTradeSchema.safeParse(trade);
+      if (!parsed.success || parsed.data.sourceSignature !== revision.signature) throw new IngestionStoreError("INGESTION_INVALID_INTERPRETATION");
+      return parsed.data;
+    });
+    const normalized = { ...revision, trades };
+    if (Buffer.byteLength(canonical(normalized)) > 1024 * 1024) throw new IngestionStoreError("INGESTION_INTERPRETATION_TOO_LARGE");
+    await this.ensure();
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      const known = await client.query(`select 1 from sat_chain_observations where wallet = $1 and signature = $2
+        union all select 1 from sat_chain_archive where wallet = $1 and signature = $2`, [revision.wallet, revision.signature]);
+      if (!known.rowCount) throw new IngestionStoreError("INGESTION_OBSERVATION_NOT_FOUND");
+      const saved = await client.query(`insert into sat_chain_interpretations (wallet, signature, parser_version, payload)
+        values ($1, $2, $3, $4::jsonb) on conflict do nothing returning payload`,
+      [revision.wallet, revision.signature, revision.version, normalized]);
+      if (!saved.rowCount) {
+        const prior = await client.query(`select payload from sat_chain_interpretations
+          where wallet = $1 and signature = $2 and parser_version = $3`,
+        [revision.wallet, revision.signature, revision.version]);
+        if (canonical(prior.rows[0]?.payload) !== canonical(normalized)) throw new IngestionStoreError("INGESTION_INTERPRETATION_CONFLICT");
+      }
+      await client.query("commit");
+      return saved.rowCount ? "inserted" : "duplicate";
+    } catch (error) { await client.query("rollback"); throw error; }
+    finally { client.release(); }
+  }
+
+  async getRawObservations(wallet: string, limit = 100, before?: { slot: number; signature: string }): Promise<StoredObservation[]> {
+    SolanaAddressSchema.parse(wallet);
+    bounded(limit, 100, 1000);
+    if (before && (!Number.isSafeInteger(before.slot) || before.slot < 0 || !validSignature(before.signature))) {
+      throw new IngestionStoreError("INGESTION_INVALID_CURSOR");
+    }
+    await this.ensure();
+    const rows = await this.pool.query(`select wallet, signature, slot, payload::text as payload, null::bytea as payload_gzip
+      from sat_chain_observations where wallet = $1 and ($3::bigint is null or (slot, signature) < ($3, $4))
+      union all select wallet, signature, slot, null::text as payload, payload_gzip
+      from sat_chain_archive where wallet = $1 and ($3::bigint is null or (slot, signature) < ($3, $4))
+      order by slot desc, signature desc limit $2`, [wallet, limit, before?.slot ?? null, before?.signature ?? null]);
+    return rows.rows.map((row) => {
+      const payload = JSON.parse(row.payload ?? gunzipSync(row.payload_gzip as Buffer).toString("utf8")) as ChainObservation;
+      return { wallet: row.wallet as string, signature: row.signature as string, slot: Number(row.slot), raw: payload.raw };
+    });
+  }
+
+  async getActivity(wallet: string, limit = 50): Promise<Array<{ signature: string; slot: number; blockTime: number | null; outcome: string; reason: string; trades: WalletTrade[]; parserVersion: number }>> {
+    const raw = await this.getRawObservations(wallet, limit);
+    const result = [];
+    for (const row of raw) {
+      const saved = await this.pool.query(`select payload, null::bytea as compressed from sat_chain_observations where wallet=$1 and signature=$2
+        union all select null::jsonb as payload,payload_gzip as compressed from sat_chain_archive where wallet=$1 and signature=$2`, [wallet,row.signature]);
+      const record = saved.rows[0];
+      if (!record) continue;
+      const original = (record.payload ?? JSON.parse(gunzipSync(record.compressed as Buffer).toString("utf8"))) as ChainObservation;
+      const revision = await this.pool.query("select payload,parser_version from sat_chain_interpretations where wallet=$1 and signature=$2 order by parser_version desc limit 1", [wallet,row.signature]);
+      const derived = revision.rows[0]?.payload ?? original;
+      result.push({ signature: row.signature, slot: row.slot, blockTime: original.blockTime,
+        outcome: String(derived.outcome), reason: String(derived.reason), trades: derived.trades as WalletTrade[], parserVersion: Number(revision.rows[0]?.parser_version ?? 1) });
+    }
+    return result;
+  }
+
+  /** Move acknowledged old observations out of the hot table while preserving raw evidence and replay keys. */
+  async archiveObservations(options: { olderThan: Date; limit?: number }): Promise<number> {
+    const limit = bounded(options.limit, 100, 1000);
+    if (!(options.olderThan instanceof Date) || !Number.isFinite(options.olderThan.getTime())) throw new IngestionStoreError("INGESTION_INVALID_RETENTION");
+    await this.ensure();
+    const client = await this.pool.connect();
+    try {
+      await this.beginMutation(client);
+      const rows = await client.query(`select o.wallet, o.signature, o.slot, o.hash, o.payload
+        from sat_chain_observations o
+        join sat_ingestion_wallets w on w.wallet = o.wallet
+        where coalesce(to_timestamp((o.payload->>'blockTime')::bigint), o.ingested_at) < $1
+          and o.signature is distinct from w.state->>'anchor'
+          and o.signature is distinct from w.state->>'target'
+          and o.signature is distinct from w.state->>'before'
+          and not exists (select 1 from sat_trade_alert_outbox q where q.wallet = o.wallet and q.signature = o.signature)
+        order by o.slot, o.signature limit $2 for update of o skip locked`, [options.olderThan, limit]);
+      for (const row of rows.rows) {
+        const bytes = gzipSync(Buffer.from(canonical(row.payload)));
+        await client.query(`insert into sat_chain_archive (wallet, signature, slot, hash, payload_gzip)
+          values ($1, $2, $3, $4, $5)`, [row.wallet, row.signature, row.slot, row.hash, bytes]);
+        await client.query("delete from sat_chain_observations where wallet = $1 and signature = $2", [row.wallet, row.signature]);
+      }
+      await client.query("commit");
+      return rows.rowCount ?? 0;
+    } catch (error) { await client.query("rollback"); throw error; }
+    finally { client.release(); }
+  }
+
   async getPendingTradeAlerts(wallet: string, limit = 100): Promise<PendingTradeAlert[]> {
     SolanaAddressSchema.parse(wallet);
     bounded(limit, 100, 1000);
@@ -357,6 +515,7 @@ export class PostgresIngestionStore {
       const counts = await client.query(`select
         (select count(*)::int from sat_ingestion_wallets) as wallets,
         (select count(*)::int from sat_chain_observations) as observations,
+        (select count(*)::int from sat_chain_archive) as archived_observations,
         (select count(*)::int from sat_chain_trades) as trades,
         (select count(*)::int from sat_trade_alert_outbox) as pending_alerts`);
       const outcomes = await client.query("select payload->>'outcome' as outcome, count(*)::int as n from sat_chain_observations group by outcome");
@@ -364,6 +523,9 @@ export class PostgresIngestionStore {
       const stats: IngestionStats = {
         wallets: Number(counts.rows[0]?.wallets), observations: Number(counts.rows[0]?.observations),
         trades: Number(counts.rows[0]?.trades), pendingAlerts: Number(counts.rows[0]?.pending_alerts),
+        archivedObservations: Number(counts.rows[0]?.archived_observations),
+        observationCapacityPercent: Math.round(100 * Number(counts.rows[0]?.observations) / this.maxObservations),
+        outboxCapacityPercent: Math.round(100 * Number(counts.rows[0]?.pending_alerts) / this.maxOutbox),
         outcomes: { CLASSIFIED: 0, UNKNOWN: 0, FAILED: 0 },
         coverage: { BOOTSTRAP_WINDOW: 0, CATCHING_UP: 0, CURRENT: 0 },
       };

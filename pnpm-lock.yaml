@@ -209,6 +209,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@sat/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@sat/database':
         specifier: workspace:*
         version: link:../../packages/database

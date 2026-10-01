@@ -14,7 +14,8 @@
   "dependencies": {
     "@sat/pipeline": "workspace:*",
     "@sat/database": "workspace:*",
-    "@sat/shared": "workspace:*"
+    "@sat/shared": "workspace:*",
+    "@sat/alerts": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.3",

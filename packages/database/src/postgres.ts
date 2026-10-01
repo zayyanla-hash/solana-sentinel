@@ -1,5 +1,6 @@
 import pg from "pg";
 import { isDeepStrictEqual } from "node:util";
+import { gzipSync, gunzipSync } from "node:zlib";
 import {
   type CandidateAsset,
   type PaperOrder,
@@ -612,6 +613,7 @@ export class PostgresDatabase implements Database {
       }
       await client.query("delete from sat_meta where k = 'intel'");
       await client.query("delete from sat_alert_event_facts");
+      await client.query("delete from sat_alert_event_archive");
       await client.query("delete from sat_alert_cooldowns");
       await client.query("commit");
     } catch (err) {
@@ -651,10 +653,19 @@ export class PostgresDatabase implements Database {
     await this.mutateIntel(() => ({ patch: { sentinelSignals: signals.slice(0, 200) }, result: undefined }));
   }
   async addAlertRule(rule: AlertRule): Promise<void> {
-    await this.mutateIntel((intel) => ({
-      patch: { alertRules: [rule, ...intel.alertRules.filter((r) => r.id !== rule.id)].slice(0, 100) },
-      result: undefined,
-    }));
+    await this.mutateIntel((intel) => {
+      if (intel.alertRules.length >= 100 && !intel.alertRules.some((r) => r.id === rule.id)) throw new Error("ALERT_RULE_LIMIT");
+      return { patch: { alertRules: [rule, ...intel.alertRules.filter((r) => r.id !== rule.id)] }, result: undefined };
+    });
+  }
+  async updateAlertRule(id: string, patch: Partial<Pick<AlertRule, "name" | "enabled" | "wallet" | "mint" | "cooldownMinutes">>): Promise<void> {
+    await this.mutateIntel((intel) => {
+      if (!intel.alertRules.some((r) => r.id === id)) throw new Error("RULE_NOT_FOUND");
+      return { patch: { alertRules: intel.alertRules.map((r) => r.id === id ? { ...r, ...patch } : r) }, result: undefined };
+    });
+  }
+  async deleteAlertRule(id: string): Promise<void> {
+    await this.mutateIntel((intel) => ({ patch: { alertRules: intel.alertRules.filter((r) => r.id !== id) }, result: undefined }));
   }
   async addAlertEvents(events: AlertEvent[]): Promise<void> {
     await this.mutateIntel((intel) => {
@@ -675,6 +686,11 @@ export class PostgresDatabase implements Database {
     return this.mutateIntel(async (intel, client) => {
       const fact = await client.query("select payload from sat_alert_event_facts where id = $1", [event.id]);
       if (fact.rowCount) return { patch: {}, result: fact.rows[0]!.payload as AlertEvent };
+      const archived = await client.query("select payload from sat_alert_event_archive where id = $1", [event.id]);
+      if (archived.rowCount) {
+        const decoded = JSON.parse(gunzipSync(archived.rows[0]!.payload as Buffer).toString("utf8"));
+        return { patch: {}, result: AlertEventSchema.parse(decoded) };
+      }
       // mutateIntel holds the intel row lock across this count and insertion,
       // so concurrent instances cannot admit a fact beyond the hard cap.
       const count = await client.query("select count(*)::int as n from sat_alert_event_facts");
@@ -710,6 +726,49 @@ export class PostgresDatabase implements Database {
         result: recorded,
       };
     });
+  }
+  /** Move settled old alert facts to compressed cold storage without losing event IDs.
+   *  An eligible Telegram recipient must already have a durable delivery row.
+   */
+  async archiveAlertFacts(options: { olderThan: Date; limit?: number }): Promise<number> {
+    const { olderThan, limit = 100 } = options;
+    if (!Number.isFinite(olderThan.getTime()) || olderThan.getTime() >= Date.now()
+      || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) {
+      throw new Error("ALERT_ARCHIVE_OPTIONS_INVALID");
+    }
+    return this.mutateIntel(async (_intel, client) => {
+      const tables = await client.query(`select to_regclass('sat_team_destinations') as destinations,
+        to_regclass('sat_team_members') as members, to_regclass('sat_team_deliveries') as deliveries`);
+      const teamTablesReady = !!tables.rows[0]?.destinations && !!tables.rows[0]?.members && !!tables.rows[0]?.deliveries;
+      // If team mode is still starting, keep delivered facts hot until recipient reconciliation is available.
+      const deliveryGuard = teamTablesReady ? `not exists (
+        select 1 from sat_team_destinations d join sat_team_members m on m.id = d.member_id and m.enabled
+        where d.chat_id is not null and d.verified_at is not null and d.enabled
+          and f.payload->>'channel' = 'INTERNAL' and f.payload->>'delivered' = 'true'
+          and f.payload->>'isDemo' = 'false'
+          and (f.payload->>'createdAt')::timestamptz >= d.verified_at
+          and not exists (select 1 from sat_team_deliveries q where q.event_id = f.id and q.member_id = d.member_id)
+      )` : process.env.SENTINEL_TEAM_MODE === "true"
+        ? `(f.payload->>'delivered' != 'true' or f.payload->>'isDemo' = 'true' or f.payload->>'channel' != 'INTERNAL')`
+        : "true";
+      const eligible = await client.query(`select f.id, f.payload from sat_alert_event_facts f
+        where (f.payload->>'createdAt')::timestamptz < $1 and ${deliveryGuard}
+        order by (f.payload->>'createdAt')::timestamptz, f.id limit $2 for update of f skip locked`,
+        [olderThan, limit]);
+      for (const row of eligible.rows) {
+        const compressed = gzipSync(Buffer.from(JSON.stringify(row.payload)), { level: 9 });
+        await client.query("insert into sat_alert_event_archive (id, payload) values ($1, $2) on conflict (id) do nothing",
+          [row.id, compressed]);
+        await client.query("delete from sat_alert_event_facts where id = $1", [row.id]);
+      }
+      return { patch: {}, result: eligible.rowCount ?? 0 };
+    });
+  }
+  async getAlertFactStats(): Promise<{ hot: number; capacity: number; usagePercent: number }> {
+    await this.ensure();
+    const result = await this.pool.query("select count(*)::int as n from sat_alert_event_facts");
+    const hot = Number(result.rows[0]?.n ?? 0);
+    return { hot, capacity: this.alertFactCapacity, usagePercent: Math.round(100 * hot / this.alertFactCapacity) };
   }
   async addBacktest(result: BacktestResult): Promise<void> {
     await this.mutateIntel((intel) => ({

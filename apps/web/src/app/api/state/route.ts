@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
+import { authenticateTeamRequest, teamMember, teamMode } from "@/lib/request-guard";
 import { NextResponse } from "next/server";
-import { getDatabase } from "@sat/database";
+import { getDatabase, getTeamStore } from "@sat/database";
 import {
   runDiscoveryCycle,
   runFullResearchPass,
@@ -28,10 +30,12 @@ function jsonError(error: string, code: string, status: number) {
 }
 
 export async function GET(req: Request) {
+  await authenticateTeamRequest(req);
   const denied = productionAuthDenied(req, true);
   if (denied) return NextResponse.json({ error: denied.error, code: denied.code }, { status: denied.status });
   const db = getDatabase();
   const state = await db.getState();
+  if (teamMode()) return NextResponse.json({ watchlist: state.watchlist, alertRules: state.alertRules.filter((r) => !r.isDemo), alertEvents: state.alertEvents.filter((e) => !e.isDemo), monitorOnly: true });
   return NextResponse.json({
     ...state,
     health: await getSystemHealth(db),
@@ -46,6 +50,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  await authenticateTeamRequest(req);
   const productionDenied = productionAuthDenied(req, true);
   if (productionDenied) return NextResponse.json(productionDenied, { status: productionDenied.status });
 
@@ -67,9 +72,16 @@ export async function POST(req: Request) {
     return NextResponse.json(denied, { status });
   }
   const db = getDatabase();
-
+  const actor = teamMember(req);
+  if (teamMode() && (!actor || !["alert_create", "wallet_analyze", "watchlist_add", "watchlist_remove"].includes(body.action))) {
+    return jsonError("Action is unavailable in the shared monitor", "MONITOR_ONLY", 403);
+  }
+  if (teamMode() && body.action === "alert_create" && !["TRACKED_WALLET_BUY", "TRACKED_WALLET_SELL"].includes(body.trigger)) {
+    return jsonError("Only supported live wallet alerts are available", "UNSUPPORTED_TRIGGER", 400);
+  }
+  if (actor) await getTeamStore().audit(actor.id, body.action, "address" in body ? body.address : "id" in body ? body.id : null, "requested");
   try {
-    switch (body.action) {
+    const response = await (async () => { switch (body.action) {
       case "discover":
         return NextResponse.json(await runDiscoveryCycle(db));
       case "research_pass":
@@ -124,6 +136,10 @@ export async function POST(req: Request) {
       case "wallet_analyze":
         return NextResponse.json({ score: await analyzeWallet(body.address, db) });
       case "watchlist_add":
+        if (teamMode()) {
+          if (body.kind !== "WALLET") return jsonError("Watch a wallet in this workspace", "WALLET_REQUIRED", 400);
+          return NextResponse.json({ item: await db.addWatchlistItem({ id: randomUUID(), kind: "WALLET", address: body.address, addedAt: new Date().toISOString() }, 50) });
+        }
         return NextResponse.json({
           item: await addWatchlistItem({
             kind: body.kind,
@@ -141,8 +157,11 @@ export async function POST(req: Request) {
         return NextResponse.json(await db.getState());
       default:
         return jsonError("unknown action", "UNKNOWN_ACTION", 400);
-    }
+    } })();
+    if (actor) await getTeamStore().audit(actor.id, body.action, null, response.status < 400 ? "completed" : "failed");
+    return response;
   } catch (e) {
-    return jsonError(e instanceof Error ? e.message : String(e), "INTERNAL", 500);
+    if (actor) await getTeamStore().audit(actor.id, body.action, null, "failed").catch(() => {});
+    return jsonError(teamMode() ? "Action failed; check monitor and database status" : e instanceof Error ? e.message : String(e), "INTERNAL", 500);
   }
 }

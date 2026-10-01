@@ -20,11 +20,14 @@ const serif = Source_Serif_4({
   variable: "--font-serif",
 });
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> { return process.env.SENTINEL_TEAM_MODE === "true" ? {
+  title: "Solana Sentinel — Shared Wallet Monitor",
+  description: "Private shared wallet monitoring and alerts. Read-only chain access; no signing or trading.",
+} : {
   title: "Solana Sentinel — Solana Agentic Trading Research Platform",
   description:
     "Paper-only Solana research and paper-trading terminal. Deterministic risk, historical signals, provenance, no live broadcast.",
-};
+}; }
 
 export default function RootLayout({
   children,

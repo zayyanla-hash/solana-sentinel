@@ -128,4 +128,47 @@ describe.skipIf(!localTestDatabase)("Postgres durable ingestion", () => {
       ], checkpoint(signature(0)))).rejects.toBeInstanceOf(IngestionStoreError);
     } finally { await db.close(); }
   });
+
+  it("keeps one active owner, archives acknowledged history, and versions interpretations without new alerts", async () => {
+    const a = new PostgresIngestionStore(scopedUrl, { maxObservations: 2 });
+    const b = new PostgresIngestionStore(scopedUrl, { maxObservations: 2 });
+    try {
+      let release!: () => void;
+      let acquired!: () => void;
+      const entered = new Promise<void>((done) => { acquired = done; });
+      const hold = new Promise<void>((done) => { release = done; });
+      const first = a.withWalletOwner(wallet, async () => { acquired(); await hold; return 42; });
+      await entered;
+      expect(await b.withWalletOwner(wallet, async () => 99)).toEqual({ owned: false });
+      release();
+      expect(await first).toEqual({ owned: true, value: 42 });
+      expect(await b.withWalletOwner(wallet, async () => 99)).toEqual({ owned: true, value: 99 });
+
+      const before = await a.getStats();
+      await a.ackTradeAlert(wallet, signature(0));
+      expect(await a.archiveObservations({ olderThan: new Date("2025-01-01T00:00:00Z") })).toBe(1);
+      const after = await a.getStats();
+      expect(after.observations).toBe(before.observations - 1);
+      expect(after.archivedObservations).toBe(1);
+      expect((await a.getRawObservations(wallet)).some((row) => row.signature === signature(0))).toBe(true);
+
+      const revised = { wallet, signature: signature(0), version: 2, outcome: "UNKNOWN" as const,
+        reason: "new-parser-abstained", trades: [] };
+      expect(await a.recordInterpretation(revised)).toBe("inserted");
+      expect(await a.recordInterpretation(revised)).toBe("duplicate");
+      expect((await a.getActivity(wallet)).find((row) => row.signature === signature(0))).toMatchObject({ outcome: "UNKNOWN", parserVersion: 2, trades: [] });
+      await expect(a.recordInterpretation({ ...revised, reason: "changed-without-version" }))
+        .rejects.toMatchObject({ code: "INGESTION_INTERPRETATION_CONFLICT" });
+      const cp = await a.getCheckpoint(wallet);
+      const replay = await a.commitPage(wallet, cp.version,
+        [{ ...observation(0), outcome: "UNKNOWN", reason: "new-parser-abstained", trades: [] }],
+        { ...checkpoint(cp.anchor!), target: null });
+      expect(replay).toMatchObject({ inserted: 0, duplicates: 1 });
+      expect((await a.getStats()).pendingAlerts).toBe(after.pendingAlerts);
+      const resumed = await a.commitPage(wallet, replay.checkpoint.version, [observation(4)],
+        { ...checkpoint(signature(4)), target: null });
+      expect(resumed.inserted).toBe(1);
+      expect((await a.getStats()).observations).toBe(2);
+    } finally { await Promise.all([a.close(), b.close()]); }
+  });
 });

@@ -5,6 +5,25 @@
  */
 
 import { z } from "zod";
+import { getTeamStore, type TeamMember } from "@sat/database";
+
+export const teamMode = () => process.env.SENTINEL_TEAM_MODE === "true";
+const authenticatedRequests = new WeakMap<Request, TeamMember>();
+export const teamMember = (req: Request) => authenticatedRequests.get(req);
+export function sessionToken(req: Request): string | null {
+  return req.headers.get("cookie")?.split(";").map((v) => v.trim()).find((v) => v.startsWith("sentinel_session="))?.slice(17) ?? null;
+}
+export async function authenticateTeamRequest(req: Request): Promise<void> {
+  if (!teamMode()) return;
+  const member = await getTeamStore().authenticate(sessionToken(req));
+  if (member) authenticatedRequests.set(req, member);
+}
+export function teamOriginAllowed(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  const configured = process.env.SAT_PUBLIC_ORIGIN;
+  return Boolean(origin && configured && origin === configured);
+}
+
 import { SolanaAddressSchema, isPublicDemo } from "@sat/shared";
 import { parseApiKeys, resolveApiPrincipal } from "@sat/entitlements";
 
@@ -116,11 +135,17 @@ export function originAllowed(origin: string | null, host: string): boolean {
 }
 
 export function operatorAuthorized(req: Request): boolean {
+  if (teamMode()) return authenticatedRequests.has(req);
   const token = process.env.SAT_API_TOKEN?.trim();
   return Boolean(token) && req.headers.get("authorization") === `Bearer ${token}`;
 }
 
 export function productionAuthDenied(req: Request, operatorOnly = false): { error: string; code: string; status: number } | null {
+  if (teamMode()) {
+    if (authenticatedRequests.has(req)) return null;
+    if (!operatorOnly && resolveApiPrincipal(req.headers.get("authorization"))) return null;
+    return { error: "Sign in with your team account", code: "UNAUTHORIZED", status: 401 };
+  }
   if (process.env.NODE_ENV !== "production") return null;
   if (!process.env.SAT_API_TOKEN?.trim() && (operatorOnly || parseApiKeys().length === 0)) {
     return { error: "Production API credentials are not configured", code: "AUTH_UNAVAILABLE", status: 503 };
@@ -143,6 +168,9 @@ export function mutatingRequestDenied(req: Request, action?: ApiAction["action"]
       error: "Public demo is read-only. Authenticated operator token required to mutate.",
       code: "PUBLIC_DEMO_READONLY",
     };
+  }
+  if (teamMode()) {
+    return teamOriginAllowed(req) ? null : { error: "Cross-origin mutation blocked", code: "CSRF_BLOCKED" };
   }
   if (bindRequiresAuth()) {
     if (!process.env.SAT_API_TOKEN?.trim() && (scope === "operator" || parseApiKeys().length === 0)) {

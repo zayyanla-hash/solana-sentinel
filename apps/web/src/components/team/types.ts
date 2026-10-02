@@ -78,6 +78,8 @@ export type MonitorHealth = {
   backup?: { status: string; lastSuccessAt?: string | null };
   backupCopy?: { status: string; lastSuccessAt?: string | null };
   worker?: { status: string; ageMs: number | null };
+  storage?: { status: string; availableBytes: number | null; totalBytes: number | null;
+    availablePercent: number | null; minimumAvailableBytes: number };
 };
 
 export type TradeLeg = { side: string; mint: string; qty: number };

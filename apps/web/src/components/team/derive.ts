@@ -1,5 +1,5 @@
 import { dayKey, formatAge, formatDayLabel, formatTime, shortAddress } from "./format";
-import { STALE_POLL_MS, type Presented, type Tone } from "./status";
+import { STALE_POLL_MS, presentStorage, type Presented, type Tone } from "./status";
 import type { MonitorHealth, Observation, Rule, StepKey, TeamStatus, View, WalletHealth } from "./types";
 
 /* ---------- Wallet freshness ---------- */
@@ -68,6 +68,8 @@ export function heroSummary(input: {
     reasons.push(`${shortAddress(first)} ${walletReason(byWallet.get(first))}${lagging.length > 1 ? ` (and ${lagging.length - 1} more)` : ""}`);
   } else {
     if (monitor.worker && monitor.worker.status !== "healthy") reasons.push("the worker is not reporting a healthy heartbeat");
+    if (monitor.storage?.status === "LOW") reasons.push("the host Mac is low on disk space");
+    else if (monitor.storage && monitor.storage.status !== "OK") reasons.push("the host Mac's disk space could not be checked");
     const pending = monitor.stats?.pendingAlerts ?? 0;
     if (pending > 0) reasons.push(`${pending} alert${pending === 1 ? " is" : "s are"} waiting to be sent`);
   }
@@ -120,10 +122,18 @@ export function needsAttention(input: {
   }
 
   const copy = monitor?.backupCopy;
+  if (monitor?.storage && monitor.storage.status !== "OK") {
+    const storage = presentStorage(monitor.storage);
+    items.push({ key: "storage", tone: "warn", icon: "alert", title: storage.label,
+      body: monitor.storage.status === "LOW" ? `${storage.detail ?? ""}. Free space on the host Mac before collection or backups stop. Keep at least 5 GiB and 10% available; preserve evidence and verified backups.`
+        : "Available disk space could not be checked. Inspect the host Mac before trusting monitoring health.",
+      action: "How to fix", view: "setup" });
+  }
   if (copy) {
     const last = copy.lastSuccessAt ? `Last copy finished ${formatTime(copy.lastSuccessAt)}.` : "No successful copy is recorded.";
     if (copy.status === "OVERDUE") items.push({ key: "copy", tone: "warn", icon: "alert", title: "Off-host backup copy overdue", body: `${last} Run the copy on the host Mac.`, action: "How to fix", view: "setup" });
     else if (copy.status === "FAILED") items.push({ key: "copy", tone: "bad", icon: "alert", title: "Off-host backup copy failed", body: `${last} The last copy did not complete.`, action: "How to fix", view: "setup" });
+    else if (copy.status === "DATABASE_ONLY") items.push({ key: "copy", tone: "warn", icon: "alert", title: "Off-host copy needs recovery configuration", body: "Create and copy a new backup including the configuration recovery key.", action: "How to fix", view: "setup" });
     else if (copy.status === "NOT_CONFIGURED") items.push({ key: "copy", tone: "neutral", icon: "alert", title: "Off-host copy not configured", body: "Backups stay on the host Mac until an off-host copy is configured.", action: "How to fix", view: "setup" });
   }
 
@@ -132,6 +142,7 @@ export function needsAttention(input: {
     const last = backup.lastSuccessAt ? `Last verified ${formatTime(backup.lastSuccessAt)}.` : "No verified backup is recorded.";
     if (backup.status === "FAILED") items.push({ key: "backup", tone: "bad", icon: "alert", title: "Local backup failed", body: last, action: "How to fix", view: "setup" });
     else if (backup.status === "OVERDUE") items.push({ key: "backup", tone: "warn", icon: "alert", title: "Local backup overdue", body: last, action: "How to fix", view: "setup" });
+    else if (backup.status === "DATABASE_ONLY") items.push({ key: "backup", tone: "warn", icon: "alert", title: "Backup needs recovery configuration", body: "Create a new backup including the configuration recovery key before relying on host-loss recovery.", action: "How to fix", view: "setup" });
     else if (backup.status === "NOT_CONFIGURED") items.push({ key: "backup", tone: "neutral", icon: "alert", title: "Local backups not configured", body: "No backup health is reported by the host.", action: "How to fix", view: "setup" });
     else items.push({ key: "backup", tone: "warn", icon: "alert", title: `Local backup: ${backup.status}`, body: last, action: "How to fix", view: "setup" });
   }
@@ -189,11 +200,13 @@ export function systemRows(monitor: MonitorHealth | null, team: TeamStatus, now:
       case "VERIFIED": return { key, label, value: at ? `verified ${at} ago` : "verified", tone: "ok" };
       case "OVERDUE": return { key, label, value: at ? `${at} ago · overdue` : "overdue", tone: "warn" };
       case "FAILED": return { key, label, value: "last attempt failed", tone: "bad" };
+      case "DATABASE_ONLY": return { key, label, value: "database only · recovery key missing", tone: "warn" };
       case "NOT_CONFIGURED": return { key, label, value: "not configured", tone: "neutral" };
       default: return { key, label, value: entry.status.toLowerCase(), tone: "neutral" };
     }
   };
   const destination = team.destination;
+  const storage = presentStorage(monitor?.storage);
   return [
     !worker ? { key: "worker", label: "Worker heartbeat", value: "unknown", tone: "neutral" }
       : worker.status === "healthy" ? { key: "worker", label: "Worker heartbeat", value: `${formatAge(worker.ageMs)} ago`, tone: "ok" }
@@ -201,6 +214,7 @@ export function systemRows(monitor: MonitorHealth | null, team: TeamStatus, now:
       : { key: "worker", label: "Worker heartbeat", value: worker.status === "STALE" ? `stale · ${formatAge(worker.ageMs)}` : worker.status.toLowerCase(), tone: "warn" },
     backupRow("backup", "Local backup", monitor?.backup),
     backupRow("copy", "Off-host copy", monitor?.backupCopy),
+    { key: "storage", label: "Host storage", value: storage.detail ? `${storage.label} · ${storage.detail}` : storage.label, tone: storage.tone },
     team.rpcConfigured ? { key: "rpc", label: "Solana RPC", value: "verified at setup", tone: "ok" } : { key: "rpc", label: "Solana RPC", value: "not configured", tone: "warn" },
     team.telegramConfigured ? { key: "bot", label: "Telegram bot", value: "saved", tone: "ok" } : { key: "bot", label: "Telegram bot", value: "not saved", tone: "neutral" },
     !destination?.verified ? { key: "destination", label: "Your destination", value: "not verified", tone: "neutral" }

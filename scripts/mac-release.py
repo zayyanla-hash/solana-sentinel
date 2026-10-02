@@ -454,29 +454,79 @@ def restore_temp(dump: Path) -> dict:
             password=pg_password(True))
 
 
+RECOVERY_KEYS = ("SAT_CONFIG_KEY", "SOLANA_RPC_URL", "SAT_TELEGRAM_BOT_TOKEN", "SENTINEL_MONITOR_WALLETS")
+
+
+def recovery_settings() -> dict[str, str]:
+    values = env_values()
+    settings = {key: values[key] for key in RECOVERY_KEYS if key in values}
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", settings.get("SAT_CONFIG_KEY", "")):
+        raise RuntimeError("A valid configuration encryption key is required for a recoverable backup.")
+    return settings
+
+
+def verified_recovery_config(dump: Path, manifest: dict) -> dict[str, str] | None:
+    reference = manifest.get("recoveryConfig")
+    if reference is None and manifest.get("formatVersion", 1) == 1:
+        return None  # Legacy archives prove database restoration only.
+    config = dump.with_suffix(".config.json")
+    if not isinstance(reference, dict) or reference.get("file") != config.name or not config.is_file():
+        raise RuntimeError("Recovery configuration is missing or its manifest is invalid.")
+    if config.stat().st_mode & 0o077 or config.stat().st_size > 65536:
+        raise RuntimeError("Recovery configuration must be a bounded private file with mode 0600.")
+    contents = config.read_bytes()
+    if hashlib.sha256(contents).hexdigest() != reference.get("sha256"):
+        raise RuntimeError("Recovery configuration checksum is invalid.")
+    try:
+        value = json.loads(contents)
+        settings = value["settings"]
+        valid = (value.get("version") == 1 and isinstance(settings, dict)
+                 and set(settings).issubset(RECOVERY_KEYS)
+                 and all(isinstance(v, str) and len(v) <= 4096 and not any(c in v for c in "\r\n\0")
+                         for v in settings.values())
+                 and re.fullmatch(r"[0-9a-fA-F]{64}", settings.get("SAT_CONFIG_KEY", "")))
+    except (ValueError, KeyError, TypeError, AttributeError):
+        valid = False
+    if not valid:
+        raise RuntimeError("Recovery configuration has an invalid format.")
+    return settings
+
+
 def backup() -> None:
     wait_ready()
     ensure_our_cluster()
     private_dir(BASE / "backups")
     name = datetime.now(timezone.utc).strftime("sentinel-%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3)
     dump = BASE / "backups" / f"{name}.dump"
+    recovery = dump.with_suffix(".config.json")
     try:
+        settings = recovery_settings()
         run([pg("pg_dump"), *db_conn(), "--format=custom", "--file", str(dump)], password=pg_password())
         dump.chmod(0o600)
         fingerprint = restore_temp(dump)
-        manifest = {"createdAt": now(), "dump": dump.name, "sha256": hashlib.sha256(dump.read_bytes()).hexdigest(),
-                    "fingerprints": fingerprint, "verifiedRestore": True}
+        if recovery_settings() != settings:
+            raise RuntimeError("Protected settings changed during backup; retry after rotation finishes.")
+        write_json(recovery, {"version": 1, "settings": settings})
+        manifest = {"formatVersion": 2, "createdAt": now(), "dump": dump.name,
+                    "sha256": hashlib.sha256(dump.read_bytes()).hexdigest(),
+                    "fingerprints": fingerprint, "verifiedRestore": True,
+                    "recoveryConfig": {"file": recovery.name, "sha256": hashlib.sha256(recovery.read_bytes()).hexdigest()}}
+        verified_recovery_config(dump, manifest)
         write_json(dump.with_suffix(".json"), manifest)
         write_json(BASE / "backup-health.json", {"status": "verified", "at": manifest["createdAt"],
-                                                  "dump": dump.name, "tableCount": len(fingerprint)})
+                                                  "dump": dump.name, "tableCount": len(fingerprint),
+                                                  "recoveryConfigIncluded": True})
         old = sorted((BASE / "backups").glob("sentinel-*.dump"), reverse=True)[BACKUP_COPIES:]
         for item in old:
             item.unlink()
             item.with_suffix(".json").unlink(missing_ok=True)
+            item.with_suffix(".config.json").unlink(missing_ok=True)
         print(f"Backup created and restored into a disposable database: {dump}")
     except Exception:
         write_json(BASE / "backup-health.json", {"status": "failed", "at": now()})
         dump.unlink(missing_ok=True)
+        recovery.unlink(missing_ok=True)
+        dump.with_suffix(".json").unlink(missing_ok=True)
         raise
     copy_target = BASE / "backup-copy-target"
     if copy_target.exists():
@@ -487,7 +537,7 @@ def backup() -> None:
             raise
 
 
-def restore_check(dump: Path | None = None) -> None:
+def restore_check(dump: Path | None = None) -> bool:
     wait_ready()
     ensure_our_cluster()
     if dump is None:
@@ -498,9 +548,13 @@ def restore_check(dump: Path | None = None) -> None:
     manifest = read_json(dump.with_suffix(".json"))
     if not manifest or hashlib.sha256(dump.read_bytes()).hexdigest() != manifest.get("sha256"):
         raise RuntimeError("Backup checksum or manifest is invalid.")
+    recovery = verified_recovery_config(dump, manifest)
     if restore_temp(dump) != manifest.get("fingerprints"):
         raise RuntimeError("Restored table row counts or hashes differ from the saved backup manifest.")
     print("PASS: archive checksum and disposable restored table contents match the saved manifest.")
+    print("Recovery configuration checksum verified." if recovery is not None else
+          "Legacy database-only archive: the configuration encryption key must be retained separately.")
+    return recovery is not None
 
 
 def copy_backup(destination: str) -> None:
@@ -510,10 +564,12 @@ def copy_backup(destination: str) -> None:
     if not dumps:
         raise RuntimeError("Run backup first.")
     dump = dumps[0]
-    restore_check(dump)
-    run(["scp", "-p", str(dump), str(dump.with_suffix(".json")), destination])
-    write_json(BASE / "backup-copy-health.json", {"status": "copied", "at": now(), "dump": dump.name})
-    print("Verified backup archive and manifest copied to the specified SSH destination.")
+    if not restore_check(dump):
+        raise RuntimeError("Create a new backup with recovery configuration before copying it off-host.")
+    run(["scp", "-p", str(dump), str(dump.with_suffix(".json")), str(dump.with_suffix(".config.json")), destination])
+    write_json(BASE / "backup-copy-health.json", {"status": "copied", "at": now(), "dump": dump.name,
+                                                    "recoveryConfigIncluded": True})
+    print("Verified backup archive, manifest and private recovery configuration copied to the specified SSH destination.")
 
 
 def configure_copy(destination: str) -> None:

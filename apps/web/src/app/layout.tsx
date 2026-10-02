@@ -1,22 +1,27 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono, Source_Serif_4 } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const sans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const sans = localFont({
+  src: "./fonts/IBMPlexSans-Variable.ttf",
+  weight: "100 700",
+  display: "swap",
   variable: "--font-sans",
 });
 
-const mono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
+const mono = localFont({
+  src: [
+    { path: "./fonts/IBMPlexMono-Regular.ttf", weight: "400" },
+    { path: "./fonts/IBMPlexMono-Medium.ttf", weight: "500" },
+  ],
+  display: "swap",
   variable: "--font-mono",
 });
 
-const serif = Source_Serif_4({
-  subsets: ["latin"],
-  weight: ["600", "700"],
+const serif = localFont({
+  src: "./fonts/SourceSerif4-Variable.ttf",
+  weight: "200 900",
+  display: "swap",
   variable: "--font-serif",
 });
 

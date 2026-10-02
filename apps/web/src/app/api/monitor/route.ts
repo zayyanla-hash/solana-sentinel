@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const observedAt = new Date().toISOString();
   const scope = "address-accountKeys; bounded bootstrap history";
   if (!process.env.DATABASE_URL || process.env.SAT_WALLET_HISTORY_SOURCE !== "journal") {
-    return NextResponse.json({ status: "NOT_CONFIGURED", scope, stats: null, wallets: [], observedAt });
+    return NextResponse.json({ status: "NOT_CONFIGURED", scope, stats: null, wallets: [], observedAt, ...services });
   }
   const store = new PostgresIngestionStore(process.env.DATABASE_URL);
   try {
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       lastError: checkpoint.lastError,
       pollAgeMs: checkpoint.lastSuccessAt ? now - Date.parse(checkpoint.lastSuccessAt) : null,
     }));
-    const healthy = (!teamMode() || services.worker.status === "healthy") && stats.pendingAlerts === 0 && wallets.length === active.size && wallets.length > 0 && wallets.every((w) => w.coverage === "CURRENT" &&
+    const healthy = (!teamMode() || (services.worker.status === "healthy" && services.storage.status === "OK")) && stats.pendingAlerts === 0 && wallets.length === active.size && wallets.length > 0 && wallets.every((w) => w.coverage === "CURRENT" &&
       !w.lastError && w.pollAgeMs !== null && w.pollAgeMs >= 0 && w.pollAgeMs <= maxAge);
     return NextResponse.json({ status: active.size === 0 ? "WAITING_FOR_WALLETS" : healthy ? "HEALTHY" : "DEGRADED", scope, stats, wallets, observedAt, ...services });
   } catch {

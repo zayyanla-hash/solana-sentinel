@@ -12,7 +12,7 @@ import type { FeedEntry } from "./useActivityFeed";
 import type { MonitorHealth, Notice, Observation, Run, StateSnapshot, TeamStatus } from "./types";
 import s from "./team.module.css";
 import { Button, ConfirmInline, CopyButton, Notice as NoticeBox, Skeleton, StatusPill, cx } from "./ui";
-import { sortNewestFirst } from "./chart-data";
+import { sortNewestFirst } from "./chart-model";
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (

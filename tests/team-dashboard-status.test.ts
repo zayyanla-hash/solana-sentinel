@@ -143,7 +143,7 @@ describe("team dashboard formatting", () => {
 
 import { countCurrent, groupByDay, heroSummary, isWalletCurrent, needsAttention, rulesForWallet, stepper, systemRows, walletStats } from "../apps/web/src/components/team/derive";
 import { inboxEvents, inboxSide } from "../apps/web/src/components/team/derive-alerts";
-import { buildPoints, classify, isMarked, layoutChart, nearestIndex, sparklinePath } from "../apps/web/src/components/team/chart-data";
+import { buildPoints, classify, isMarked, layoutChart, nearestIndex, sparklinePath } from "../apps/web/src/components/team/chart-model";
 import { createScopedRule } from "../apps/web/src/components/team/rules";
 import { HttpError } from "../apps/web/src/components/team/api";
 import { addressProblem, formatCooldown, formatDayLabel, maskChatId } from "../apps/web/src/components/team/format";

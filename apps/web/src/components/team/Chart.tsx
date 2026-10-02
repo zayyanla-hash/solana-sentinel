@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { buildPoints, chartSummary, isMarked, layoutChart, nearestIndex, sparklinePath, type ChartFilter, type ChartKind, type ChartPoint } from "./chart-data";
+import { buildPoints, chartSummary, isMarked, layoutChart, nearestIndex, sparklinePath, type ChartFilter, type ChartKind, type ChartPoint } from "./chart-model";
 import { dayKey, formatClock, formatQty, formatTime, shortAddress } from "./format";
 import type { Observation } from "./types";
 import s from "./team.module.css";

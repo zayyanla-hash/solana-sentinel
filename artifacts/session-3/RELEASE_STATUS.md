@@ -35,3 +35,7 @@ No wallet keys are required or requested. The app does not sign, broadcast or ex
 - These changes were tested against staging and temporary isolated Mac databases. The installed release, production settings and database were not changed. An update and a new complete backup are required before the installed runtime gains these fixes.
 
 No real Telegram delivery, second-Mac acceptance, off-host restoration or sustained live monitoring was added by these checks.
+
+## Upstream integration follow-up
+
+Upstream PR #5 renamed the same chart module as the Mac-build fix in this release branch. The integration retains upstream `chart-model.ts`, removes the duplicate module, and preserves the recovery, capacity and isolated database-test changes. The combined source passed 421 tests in 41 files with disposable PostgreSQL integration, typecheck, lint, complete production builds and basic secret scanning. The previous running installation was not updated.

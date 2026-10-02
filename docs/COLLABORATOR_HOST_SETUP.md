@@ -10,14 +10,14 @@ Prepare and verify the new host before retiring the previous one. Leave RPC and 
 
 ## Install the release
 
-Use macOS 12+, Node 22 LTS, Python 3, pnpm 10.33.3 and PostgreSQL 17. If the frontend development clone already exists, use a separate host checkout. The Mac-specific chart and database-test fixes are currently in PR #4; use this branch until those fixes are merged into main.
+Use macOS 12+, Node 22 LTS, Python 3, pnpm 10.33.3 and PostgreSQL 17. If the frontend development clone already exists, use a separate host checkout. The backup-recovery, capacity and database-test fixes are currently in PR #4; use this branch until those fixes are merged into main. The branch incorporates the upstream chart-module rename from PR #5.
 
 ```sh
 git clone --branch fix/shared-mac-install https://github.com/zayyanla-hash/solana-sentinel.git solana-sentinel-host
 cd solana-sentinel-host
 ```
 
-Checkpoint `7c96f57` passed the local 409-test suite, production builds and five PostgreSQL-backed Mac tests; its hosted build, end-to-end and Mac checks passed. Verify the fetched branch includes that checkpoint. Do not install a frontend-only branch.
+Checkpoint `df8f510` passed the local 421-test suite, production builds and six PostgreSQL-backed Mac tests; its hosted build, end-to-end and Mac checks passed. The branch also integrates upstream `77da0e2`, preserving the collaborator’s `chart-model.ts` filename. The combined source passed the same 421-test suite and production builds. Verify the fetched branch includes the recovery checkpoint. Do not install a frontend-only branch.
 
 On a Mac with Homebrew:
 
@@ -114,3 +114,13 @@ Only then configure the dedicated mainnet RPC, actual watched wallets, shared bo
 The host must stay awake and connected. The service stops while it is asleep/offline and catches up after return within the provider's retained coverage. Complete the sustained live-run and recovery acceptance before calling the deployment production-ready.
 
 See [shared Mac operations](SHARED_MAC.md) for updates, rollback, retention, backup copies and recovery.
+
+## Prompt for the assistant on the host Mac
+
+Paste this into your coding assistant while it is working on the collaborator’s Mac:
+
+> Set up the private shared Solana Sentinel host on this Mac using https://github.com/zayyanla-hash/solana-sentinel.git, branch `fix/shared-mac-install`. Read `docs/COLLABORATOR_HOST_SETUP.md` and `docs/SHARED_MAC.md` first. Inspect existing installations and preserve their data; use a separate host checkout from frontend development. Confirm the checkout includes `df8f510`, run the required checks and build, then install the supervised PostgreSQL, dashboard, worker and backup services. Provision the two intended members with separate credentials saved in protected local files. Keep all secrets out of chat, logs and Git.
+>
+> Join the existing shared Tailscale network using the intended collaborator account, configure private Serve and the exact HTTPS origin, and report this Mac’s current Tailscale machine name, private addresses and Serve URL so the owner can update the HTTPS-only access policy. Let the human handle sign-in and OS permission prompts. Keep the previous host available until both Macs pass independent login, shared-setting and recovery checks.
+>
+> Configure the dedicated mainnet RPC and shared Telegram bot only through protected local setup after host cutover, verify each member’s destination, and test actual delivery to both. Do not sign, broadcast or trade. Report completed checks and remaining external requirements precisely; the deployment remains a release candidate until both-Mac acceptance, copied-backup restoration and the live-run checks pass.
